@@ -21,7 +21,7 @@ MONTH_MAP = {
 
 # Step 1: Load input data
 print("\n[Step 1] Loading symbol_list_all.csv...")
-df = pd.read_csv('symbol_list_all.csv', keep_default_na=False)
+df = pd.read_csv('lists_and_matrix/symbol_list_all.csv', keep_default_na=False)
 
 print(f"   ✓ Loaded {len(df)} symbols")
 print(f"   ✓ Found {df['ice_symbol'].nunique()} unique symbols")
@@ -106,23 +106,42 @@ print("\n[Step 5] Testing formula generation...")
 def generate_spread_formula(symbol_1, symbol_2, lookup):
     """
     Generate spread formula: symbol_1_converted - symbol_2_converted
+    
+    Handles both regular symbols (e.g., '%CL V!') and quarterly formulas (e.g., '=((('%NBI V!-IEU')...')
+    
+    For quarterly formulas: strip the leading '=' and use the formula part directly (no quotes)
+    For regular symbols: wrap in quotes and apply conversion if needed
     """
     meta_1 = lookup[symbol_1]
     meta_2 = lookup[symbol_2]
     
     # Build symbol_1 part
-    symbol_1_part = f"('{symbol_1}')"
-    if meta_1['convert_to_$usg'] != 'n/a' and meta_1['convert_to_$usg'] != '':
-        conversion = meta_1['convert_to_$usg']
-        symbol_1_part = f"{symbol_1_part}{conversion}"
+    if symbol_1.startswith('='):
+        # Quarterly formula - strip the '=' and add extra '(' at the beginning
+        # Source: =((('%AFE F!-IEU')...)/3)/521
+        # Want: ((('%AFE F!-IEU')...)/3)/521
+        symbol_1_part = '(' + symbol_1[1:]  # Remove leading '=' and add '('
+    else:
+        # Regular symbol - wrap in quotes
+        symbol_1_part = f"('{symbol_1}')"
+        if meta_1['convert_to_$usg'] != 'n/a' and meta_1['convert_to_$usg'] != '':
+            conversion = meta_1['convert_to_$usg']
+            symbol_1_part = f"{symbol_1_part}{conversion}"
     
     # Build symbol_2 part
-    symbol_2_part = f"('{symbol_2}')"
-    if meta_2['convert_to_$usg'] != 'n/a' and meta_2['convert_to_$usg'] != '':
-        conversion = meta_2['convert_to_$usg']
-        symbol_2_part = f"{symbol_2_part}{conversion}"
+    if symbol_2.startswith('='):
+        # Quarterly formula - strip the '=' and add extra '(' at the beginning
+        # Source: =((('%NBI V!-IEU')...)/3)
+        # Want: ((('%NBI V!-IEU')...)/3)
+        symbol_2_part = '(' + symbol_2[1:]  # Remove leading '=' and add '('
+    else:
+        # Regular symbol - wrap in quotes
+        symbol_2_part = f"('{symbol_2}')"
+        if meta_2['convert_to_$usg'] != 'n/a' and meta_2['convert_to_$usg'] != '':
+            conversion = meta_2['convert_to_$usg']
+            symbol_2_part = f"{symbol_2_part}{conversion}"
     
-    # Combine: symbol_1 - symbol_2
+    # Combine: symbol_1 - symbol_2 (always add '=' at the beginning for the spread formula)
     formula = f"={symbol_1_part}-{symbol_2_part}"
     return formula
 
@@ -309,13 +328,13 @@ print(sample_spread[['ice_symbol', 'symbol_root', 'product', 'component_months',
 
 # Step 11: Save to CSV
 print("\n[Step 11] Saving to symbol_matrix.csv...")
-combined_df.to_csv('symbol_matrix.csv', index=False)
-print(f"   ✓ Saved symbol_matrix.csv")
+combined_df.to_csv('lists_and_matrix/symbol_matrix.csv', index=False)
+print(f"   ✓ Saved lists_and_matrix/symbol_matrix.csv")
 
 print("\n" + "=" * 80)
 print("ENHANCED SYMBOL MATRIX CREATION COMPLETE")
 print("=" * 80)
-print(f"\nOutput file: symbol_matrix.csv")
+print(f"\nOutput file: lists_and_matrix/symbol_matrix.csv")
 print(f"Total rows: {len(combined_df):,}")
 print(f"  - Outrights: {outright_count:,}")
 print(f"  - Spreads: {spread_count:,}")
