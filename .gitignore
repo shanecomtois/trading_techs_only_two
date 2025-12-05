@@ -36,5 +36,10 @@ signal_generator/output/ice_connect_signals_*.txt
 *.backup
 test_*.py
 
+# Sensitive configuration files (credentials)
+email_settings/*.env
+email_settings/Email.env
+!email_settings/Email.env.example
+
 
 

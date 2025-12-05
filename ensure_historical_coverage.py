@@ -14,10 +14,9 @@ import logging
 import sys
 import json
 import re
-from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FutureTimeoutError
-from threading import Lock, Thread, Event
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from threading import Lock
 import traceback
-import time
 
 # Add error handling for imports
 try:
@@ -143,18 +142,46 @@ def load_config(config_file='study_settings/indicator_config.json'):
         logger.error(f"Error loading config file {config_file}: {e}")
         raise
 
-def validate_historical_file(file_path, expected_date, expected_symbol_count=14080):
+def get_expected_symbol_count(symbols_file='lists_and_matrix/symbol_matrix.csv'):
+    """
+    Calculate expected symbol count dynamically from symbol matrix file.
+    This ensures validation uses the correct count even as symbols are added/removed.
+    
+    Args:
+        symbols_file: Path to symbol_matrix.csv file
+    
+    Returns:
+        int: Expected number of symbols (rows) in historical files
+    """
+    try:
+        symbol_path = Path(symbols_file)
+        if not symbol_path.exists():
+            logger.warning(f"Symbol matrix file not found: {symbols_file}. Using default count: 14124")
+            return 14124  # Fallback to current known count
+        
+        df = pd.read_csv(symbol_path)
+        count = len(df)
+        logger.debug(f"Calculated expected symbol count from {symbols_file}: {count}")
+        return count
+    except Exception as e:
+        logger.warning(f"Error calculating symbol count from {symbols_file}: {e}. Using default count: 14124")
+        return 14124  # Fallback to current known count (176 outrights + 13,948 spreads = 14,124)
+
+def validate_historical_file(file_path, expected_date, expected_symbol_count=None):
     """
     Validate a historical file
     
     Args:
         file_path: Path to the CSV file
         expected_date: Expected Friday date (datetime object)
-        expected_symbol_count: Expected number of symbols (rows)
+        expected_symbol_count: Expected number of symbols (rows). If None, will be calculated dynamically.
     
     Returns:
         (is_valid: bool, error_message: str)
     """
+    # Calculate expected count dynamically if not provided
+    if expected_symbol_count is None:
+        expected_symbol_count = get_expected_symbol_count()
     try:
         file_path = Path(file_path)
         
@@ -271,30 +298,7 @@ def calculate_required_dates(min_weeks=104, max_weeks=156):
     
     return required_dates, max_dates
 
-def call_with_timeout(func, timeout_seconds, *args, **kwargs):
-    """
-    Call a function with a timeout using ThreadPoolExecutor
-    
-    Args:
-        func: Function to call
-        timeout_seconds: Maximum time to wait (in seconds)
-        *args, **kwargs: Arguments to pass to function
-    
-    Returns:
-        Function result if completed within timeout
-    
-    Raises:
-        FutureTimeoutError: If function doesn't complete within timeout
-        Exception: Any exception raised by the function
-    """
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(func, *args, **kwargs)
-        try:
-            return future.result(timeout=timeout_seconds)
-        except FutureTimeoutError:
-            raise TimeoutError(f"Function {func.__name__} exceeded timeout of {timeout_seconds} seconds ({timeout_seconds/3600:.1f} hours)")
-
-def process_missing_week(target_date, output_dir, symbols_file, config_file, stats_lock, stats, timeout_hours=3):
+def process_missing_week(target_date, output_dir, symbols_file, config_file, stats_lock, stats):
     """
     Process a single missing week
     
@@ -305,71 +309,36 @@ def process_missing_week(target_date, output_dir, symbols_file, config_file, sta
         config_file: Path to config JSON
         stats_lock: Thread lock for stats
         stats: Statistics dictionary
-        timeout_hours: Maximum time to wait for processing (default: 3 hours)
     
     Returns:
         (target_date, success: bool, error_message: str)
     """
     date_str = target_date.strftime('%Y-%m-%d')
-    timeout_seconds = timeout_hours * 3600  # Convert hours to seconds
-    
-    logger.info("")
-    logger.info("=" * 80)
-    logger.info(f"PROCESSING MISSING WEEK: {date_str}")
-    logger.info("=" * 80)
-    logger.info(f"Start time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    logger.info(f"Timeout: {timeout_hours} hours ({timeout_seconds/60:.0f} minutes)")
+    logger.info(f"Processing missing week: {date_str}")
     
     try:
-        # Call the main data pull function with specific date and timeout
-        # Pass the logger for unified logging
-        def pull_data():
-            return pull_all_ohlc_data(
-                symbols_file=symbols_file,
-                weeks_back=None,  # Use config default (5 years for indicators)
-                output_dir=output_dir,
-                snapshot_date=date_str,  # Target specific date
-                max_workers_outrights=2,  # Reduced to avoid ICE library threading crashes
-                max_workers_spreads=20,
-                config_file=config_file,
-                external_logger=logger  # Use unified logger
-            )
-        
-        # Call with timeout
-        try:
-            output_file = call_with_timeout(pull_data, timeout_seconds)
-        except TimeoutError as e:
-            with stats_lock:
-                stats['weeks_failed'] += 1
-                stats['failed_weeks'].append((date_str, f"Timeout: {str(e)}"))
-            logger.error(f"✗ TIMEOUT processing {date_str}: {e}")
-            logger.info("=" * 80)
-            return (target_date, False, f"Timeout after {timeout_hours} hours")
-        
-        # Check if output_file is None (all symbols failed)
-        if output_file is None:
-            with stats_lock:
-                stats['weeks_failed'] += 1
-                stats['failed_weeks'].append((date_str, "No data fetched - all ICE API calls failed"))
-            logger.error(f"✗ FAILED processing {date_str}: pull_all_ohlc_data returned None")
-            logger.error(f"  This means all ICE API calls failed - check ICE connection")
-            logger.info("=" * 80)
-            return (target_date, False, "No data fetched - all ICE API calls failed")
+        # Call the main data pull function with specific date
+        output_file = pull_all_ohlc_data(
+            symbols_file=symbols_file,
+            weeks_back=None,  # Use config default (5 years for indicators)
+            output_dir=output_dir,
+            snapshot_date=date_str,  # Target specific date
+            max_workers_outrights=10,
+            max_workers_spreads=20,
+            config_file=config_file
+        )
         
         # Validate the created file
         is_valid, error_msg = validate_historical_file(
             output_file,
             target_date,
-            expected_symbol_count=14080  # Current count: 132 monthly outrights + 13,948 spreads = 14,080
+            expected_symbol_count=None  # Will be calculated dynamically from symbol matrix
         )
         
         if is_valid:
             with stats_lock:
                 stats['weeks_filled'] += 1
-            logger.info("")
-            logger.info(f"✓ SUCCESSFULLY PROCESSED AND VALIDATED: {date_str}")
-            logger.info(f"End time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            logger.info("=" * 80)
+            logger.info(f"✓ Successfully processed and validated: {date_str}")
             return (target_date, True, None)
         else:
             # Delete invalid file and retry once
@@ -383,34 +352,26 @@ def process_missing_week(target_date, output_dir, symbols_file, config_file, sta
             # Retry once
             logger.info(f"Retrying {date_str}...")
             try:
-                def pull_data_retry():
-                    return pull_all_ohlc_data(
-                        symbols_file=symbols_file,
-                        weeks_back=None,
-                        output_dir=output_dir,
-                        snapshot_date=date_str,
-                        max_workers_outrights=2,  # Reduced to avoid ICE library threading crashes
-                        max_workers_spreads=20,
-                        config_file=config_file,
-                        external_logger=logger  # Use unified logger
-                    )
-                
-                # Retry with timeout
-                output_file = call_with_timeout(pull_data_retry, timeout_seconds)
+                output_file = pull_all_ohlc_data(
+                    symbols_file=symbols_file,
+                    weeks_back=None,
+                    output_dir=output_dir,
+                    snapshot_date=date_str,
+                    max_workers_outrights=10,
+                    max_workers_spreads=20,
+                    config_file=config_file
+                )
                 
                 is_valid, error_msg = validate_historical_file(
                     output_file,
                     target_date,
-                    expected_symbol_count=14080
+                    expected_symbol_count=None  # Will be calculated dynamically from symbol matrix
                 )
                 
                 if is_valid:
                     with stats_lock:
                         stats['weeks_filled'] += 1
-                    logger.info("")
-                    logger.info(f"✓ SUCCESSFULLY PROCESSED ON RETRY: {date_str}")
-                    logger.info(f"End time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-                    logger.info("=" * 80)
+                    logger.info(f"✓ Successfully processed on retry: {date_str}")
                     return (target_date, True, None)
                 else:
                     with stats_lock:
@@ -425,22 +386,12 @@ def process_missing_week(target_date, output_dir, symbols_file, config_file, sta
                 logger.error(f"✗ Exception on retry for {date_str}: {e}")
                 return (target_date, False, str(e))
         
-    except TimeoutError as e:
-        with stats_lock:
-            stats['weeks_failed'] += 1
-            stats['failed_weeks'].append((date_str, f"Timeout: {str(e)}"))
-        logger.error(f"✗ TIMEOUT processing {date_str}: {e}")
-        logger.error(f"  Processing exceeded {timeout_hours} hour timeout limit")
-        logger.error(f"  This week will be skipped and can be retried later")
-        logger.info("=" * 80)
-        return (target_date, False, f"Timeout after {timeout_hours} hours")
     except Exception as e:
         with stats_lock:
             stats['weeks_failed'] += 1
             stats['failed_weeks'].append((date_str, str(e)))
         logger.error(f"✗ Exception processing {date_str}: {e}")
         logger.error(traceback.format_exc())
-        logger.info("=" * 80)
         return (target_date, False, str(e))
 
 def ensure_historical_coverage(
@@ -495,33 +446,9 @@ def ensure_historical_coverage(
         logger.info("\n[Step 2] Calculating required date ranges...")
         required_dates, max_dates = calculate_required_dates(min_weeks, max_weeks)
         
-        # Step 3: Validate existing files and identify missing weeks
-        logger.info("\n[Step 3] Validating existing files and identifying missing weeks...")
-        valid_existing_files = {}
-        invalid_files = []
-        
-        for date, file_path in existing_files.items():
-            logger.info(f"Validating existing file: {file_path.name}...")
-            is_valid, error_msg = validate_historical_file(
-                file_path,
-                date,
-                expected_symbol_count=14080
-            )
-            if is_valid:
-                valid_existing_files[date] = file_path
-                logger.info(f"  ✓ Valid: {file_path.name}")
-            else:
-                invalid_files.append((date, file_path, error_msg))
-                logger.warning(f"  ✗ Invalid: {file_path.name} - {error_msg}")
-                logger.warning(f"    Will be regenerated")
-        
-        stats['files_valid'] = len(valid_existing_files)
-        stats['files_invalid'] = len(invalid_files)
-        logger.info(f"Valid existing files: {len(valid_existing_files)}")
-        logger.info(f"Invalid existing files: {len(invalid_files)} (will be regenerated)")
-        
-        # Missing weeks are those not in valid existing files
-        missing_weeks = [date for date in required_dates if date not in valid_existing_files]
+        # Step 3: Identify missing weeks
+        logger.info("\n[Step 3] Identifying missing weeks...")
+        missing_weeks = [date for date in required_dates if date not in existing_files]
         stats['weeks_missing'] = len(missing_weeks)
         logger.info(f"Missing weeks: {len(missing_weeks)}")
         if missing_weeks:
@@ -588,7 +515,7 @@ def ensure_historical_coverage(
             is_valid, error_msg = validate_historical_file(
                 file_path,
                 date,
-                expected_symbol_count=14080
+                expected_symbol_count=None  # Will be calculated dynamically from symbol matrix
             )
             
             if is_valid:
@@ -604,38 +531,22 @@ def ensure_historical_coverage(
                     
                     # Regenerate
                     date_str = date.strftime('%Y-%m-%d')
-                    logger.info("")
-                    logger.info("=" * 80)
-                    logger.info(f"REGENERATING INVALID FILE: {date_str}")
-                    logger.info("=" * 80)
-                    logger.info(f"Timeout: 3 hours (180 minutes)")
-                    
-                    def pull_data_regenerate():
-                        return pull_all_ohlc_data(
-                            symbols_file=symbols_file,
-                            weeks_back=None,
-                            output_dir=output_dir,
-                            snapshot_date=date_str,
-                            max_workers_outrights=2,  # Reduced to avoid ICE library threading crashes
-                            max_workers_spreads=20,
-                            config_file=config_file,
-                            external_logger=logger  # Use unified logger
-                        )
-                    
-                    # Regenerate with timeout (3 hours)
-                    try:
-                        output_file = call_with_timeout(pull_data_regenerate, 3 * 3600)
-                    except TimeoutError as e:
-                        logger.error(f"✗ TIMEOUT regenerating {date_str}: {e}")
-                        logger.error(f"  Regeneration exceeded 3 hour timeout limit")
-                        stats['failed_weeks'].append((date_str, f"Regeneration timeout: {str(e)}"))
-                        continue
+                    logger.info(f"Regenerating: {date_str}")
+                    output_file = pull_all_ohlc_data(
+                        symbols_file=symbols_file,
+                        weeks_back=None,
+                        output_dir=output_dir,
+                        snapshot_date=date_str,
+                        max_workers_outrights=10,
+                        max_workers_spreads=20,
+                        config_file=config_file
+                    )
                     
                     # Validate regenerated file
                     is_valid, error_msg = validate_historical_file(
                         output_file,
                         date,
-                        expected_symbol_count=14080
+                        expected_symbol_count=None  # Will be calculated dynamically from symbol matrix
                     )
                     
                     if is_valid:
@@ -904,5 +815,4 @@ if __name__ == "__main__":
             logger.error(error_msg)
             logger.error(traceback.format_exc())
         sys.exit(1)
-
 
