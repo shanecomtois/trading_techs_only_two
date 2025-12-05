@@ -1,12 +1,20 @@
 """
 Create symbol_matrix.csv with outrights and spreads - Enhanced with expanded metadata
-- 176 outright symbols (original) with populated component_months
-- 15,400 spread symbols (formulas) with full symbol_1 and symbol_2 metadata
-- Total: 15,576 rows
+- Outright symbols (monthly + quarterly) with populated component_months
+- Spread symbols (formulas) with full symbol_1 and symbol_2 metadata
+- Quarterlies (quarter_numb == 'Y') are included as outrights (with conversions applied)
+- Spreads include: Month v Month, Qtr v Qtr, Month v Qtr (excluding months that are part of the quarter)
 """
 import pandas as pd
 import itertools
 import re
+import sys
+import traceback
+import csv
+
+# Force UTF-8 output
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
 
 print("=" * 80)
 print("CREATING ENHANCED SYMBOL MATRIX (OUTRIGHTS + SPREADS)")
@@ -21,7 +29,42 @@ MONTH_MAP = {
 
 # Step 1: Load input data
 print("\n[Step 1] Loading symbol_list_all.csv...")
-df = pd.read_csv('lists_and_matrix/symbol_list_all.csv', keep_default_na=False)
+
+# Manual CSV parsing to handle malformed rows (quarterlies with unquoted commas in component_symbols)
+rows = []
+expected_columns = 11  # Based on the CSV structure
+
+try:
+    with open('lists_and_matrix/symbol_list_all.csv', 'r', encoding='utf-8') as f:
+        reader = csv.reader(f)
+        header = next(reader)  # Read header
+        
+        for row_num, row in enumerate(reader, start=2):  # Start at 2 (after header)
+            if len(row) == expected_columns:
+                # Normal row - use as is
+                rows.append(row)
+            elif len(row) > expected_columns:
+                # Malformed row (likely quarterly with unquoted commas in component_symbols)
+                # Combine extra fields back into component_symbols (last column)
+                fixed_row = row[:expected_columns-1]  # All columns except last
+                # Combine remaining fields into component_symbols
+                component_symbols = ','.join(row[expected_columns-1:])
+                fixed_row.append(component_symbols)
+                rows.append(fixed_row)
+            else:
+                # Row with too few fields - skip or pad
+                print(f"   ⚠ Warning: Row {row_num} has {len(row)} fields (expected {expected_columns}), skipping")
+                continue
+    
+    # Create DataFrame from manually parsed rows
+    df = pd.DataFrame(rows, columns=header)
+    df = df.replace('', 'n/a')  # Replace empty strings with 'n/a' for consistency
+    
+except Exception as e:
+    print(f"   ✗ Error loading CSV: {e}")
+    import traceback
+    traceback.print_exc()
+    sys.exit(1)
 
 print(f"   ✓ Loaded {len(df)} symbols")
 print(f"   ✓ Found {df['ice_symbol'].nunique()} unique symbols")
@@ -117,10 +160,13 @@ def generate_spread_formula(symbol_1, symbol_2, lookup):
     
     # Build symbol_1 part
     if symbol_1.startswith('='):
-        # Quarterly formula - strip the '=' and add extra '(' at the beginning
-        # Source: =((('%AFE F!-IEU')...)/3)/521
-        # Want: ((('%AFE F!-IEU')...)/3)/521
-        symbol_1_part = '(' + symbol_1[1:]  # Remove leading '=' and add '('
+        # Quarterly formula - remove the leading '=' and append conversion if needed
+        symbol_1_part = symbol_1[1:]
+        # Check if conversion is already in the formula (ends with /521 or similar)
+        if meta_1['convert_to_$usg'] != 'n/a' and meta_1['convert_to_$usg'] != '':
+            # Check if conversion is already appended
+            if not symbol_1_part.endswith(meta_1['convert_to_$usg']):
+                symbol_1_part = f"{symbol_1_part}{meta_1['convert_to_$usg']}"
     else:
         # Regular symbol - wrap in quotes
         symbol_1_part = f"('{symbol_1}')"
@@ -130,10 +176,13 @@ def generate_spread_formula(symbol_1, symbol_2, lookup):
     
     # Build symbol_2 part
     if symbol_2.startswith('='):
-        # Quarterly formula - strip the '=' and add extra '(' at the beginning
-        # Source: =((('%NBI V!-IEU')...)/3)
-        # Want: ((('%NBI V!-IEU')...)/3)
-        symbol_2_part = '(' + symbol_2[1:]  # Remove leading '=' and add '('
+        # Quarterly formula - remove the leading '=' and append conversion if needed
+        symbol_2_part = symbol_2[1:]
+        # Check if conversion is already in the formula (ends with /521 or similar)
+        if meta_2['convert_to_$usg'] != 'n/a' and meta_2['convert_to_$usg'] != '':
+            # Check if conversion is already appended
+            if not symbol_2_part.endswith(meta_2['convert_to_$usg']):
+                symbol_2_part = f"{symbol_2_part}{meta_2['convert_to_$usg']}"
     else:
         # Regular symbol - wrap in quotes
         symbol_2_part = f"('{symbol_2}')"
@@ -157,16 +206,27 @@ for sym1, sym2 in test_cases:
     print(f"      {sym1} - {sym2}")
     print(f"      → {formula}")
 
-# Step 6: Create outrights section
-print("\n[Step 6] Creating outrights section...")
+# Step 6: Create outrights section (INCLUDE QUARTERLIES)
+print("\n[Step 6] Creating outrights section (including quarterlies)...")
 outrights_rows = []
 
+# Include all symbols (both monthly and quarterly)
 for _, row in df_enhanced.iterrows():
     component_months = row['component_months']
     component_months_names = convert_month_codes_to_names(component_months)
     
+    # For quarterlies, apply conversion factor to the formula if it exists
+    ice_symbol = row['ice_symbol']
+    if row['quarter_numb'] == 'Y':
+        # Quarterly formula - apply conversion if needed
+        conversion = row['convert_to_$usg']
+        if conversion != 'n/a' and conversion != '':
+            # Formula is like =((('%AFE F!-IEU')+('%AFE G!-IEU')+('%AFE H!-IEU'))/3)
+            # Need to append conversion: =((('%AFE F!-IEU')+('%AFE G!-IEU')+('%AFE H!-IEU'))/3)/521
+            ice_symbol = f"{ice_symbol}{conversion}"
+    
     outright_row = {
-        'ice_symbol': row['ice_symbol'],
+        'ice_symbol': ice_symbol,
         'symbol_root': row['symbol_root'],
         'product': row['product'],
         'location': row['location'],
@@ -185,17 +245,90 @@ for _, row in df_enhanced.iterrows():
     outrights_rows.append(outright_row)
 
 outrights_df = pd.DataFrame(outrights_rows)
-print(f"   ✓ Created {len(outrights_df)} outright symbols")
+monthly_count = len(outrights_df[outrights_df['quarter_numb'] == 'N'])
+quarterly_count = len(outrights_df[outrights_df['quarter_numb'] == 'Y'])
+print(f"   ✓ Created {len(outrights_df)} outright symbols (monthly: {monthly_count}, quarterly: {quarterly_count})")
 
-# Step 7: Create spreads section
-print("\n[Step 7] Creating spreads section...")
+# Step 7: Create spreads section (INCLUDE QUARTERLIES with exclusion rule)
+print("\n[Step 7] Creating spreads section (including quarterlies with Month v Qtr exclusion rule)...")
+
+def should_exclude_month_vs_quarter(symbol_1, symbol_2, lookup):
+    """
+    Check if a Month v Qtr spread should be excluded.
+    Rule: If monthly contract's month is part of the quarterly's component months, exclude it.
+    
+    Returns True if spread should be excluded, False otherwise.
+    """
+    meta_1 = lookup[symbol_1]
+    meta_2 = lookup[symbol_2]
+    
+    # Check if symbol_1 is monthly and symbol_2 is quarterly
+    if meta_1['quarter_numb'] == 'N' and meta_2['quarter_numb'] == 'Y':
+        month_code = extract_month_code_from_symbol(symbol_1)
+        if month_code:
+            # Try component_months first, fallback to component_symbols if needed
+            quarter_months = []
+            if meta_2['component_months'] and meta_2['component_months'] != 'n/a' and meta_2['component_months'] != '':
+                quarter_months = [m.strip() for m in str(meta_2['component_months']).split(',')]
+            # If component_months parsing failed (only got 1 month), try extracting from component_symbols
+            if len(quarter_months) < 3 and meta_2['component_symbols'] and meta_2['component_symbols'] != 'n/a' and meta_2['component_symbols'] != '':
+                # Extract month codes from component_symbols (e.g., '%PRN J!-IEU,%PRN K!-IEU,%PRN M!-IEU')
+                comp_symbols_str = str(meta_2['component_symbols']).strip().strip('"').strip("'")
+                comp_symbols = [s.strip() for s in comp_symbols_str.split(',') if s.strip().startswith('%')]
+                for comp_sym in comp_symbols:
+                    comp_month = extract_month_code_from_symbol(comp_sym)
+                    if comp_month and comp_month not in quarter_months:
+                        quarter_months.append(comp_month)
+            if month_code in quarter_months:
+                return True
+    
+    # Check if symbol_1 is quarterly and symbol_2 is monthly
+    if meta_1['quarter_numb'] == 'Y' and meta_2['quarter_numb'] == 'N':
+        month_code = extract_month_code_from_symbol(symbol_2)
+        if month_code:
+            # Try component_months first, fallback to component_symbols if needed
+            quarter_months = []
+            if meta_1['component_months'] and meta_1['component_months'] != 'n/a' and meta_1['component_months'] != '':
+                quarter_months = [m.strip() for m in str(meta_1['component_months']).split(',')]
+            # If component_months parsing failed (only got 1 month), try extracting from component_symbols
+            if len(quarter_months) < 3 and meta_1['component_symbols'] and meta_1['component_symbols'] != 'n/a' and meta_1['component_symbols'] != '':
+                # Extract month codes from component_symbols
+                comp_symbols_str = str(meta_1['component_symbols']).strip().strip('"').strip("'")
+                comp_symbols = [s.strip() for s in comp_symbols_str.split(',') if s.strip().startswith('%')]
+                for comp_sym in comp_symbols:
+                    comp_month = extract_month_code_from_symbol(comp_sym)
+                    if comp_month and comp_month not in quarter_months:
+                        quarter_months.append(comp_month)
+            if month_code in quarter_months:
+                return True
+    
+    return False
+
+# Include all symbols (monthly + quarterly) for spread generation
 symbols = sorted(df_enhanced['ice_symbol'].tolist())
 pairs = list(itertools.combinations(symbols, 2))
 
-print(f"   Generating {len(pairs)} spread formulas...")
+print(f"   Total possible pairs: {len(pairs):,}")
+print(f"   Filtering Month v Qtr spreads where month is part of quarter...")
 
 spreads_rows = []
-for symbol_1, symbol_2 in pairs:
+excluded_count = 0
+missing_count = 0
+for idx, (symbol_1, symbol_2) in enumerate(pairs):
+    # Progress indicator every 1000 pairs
+    if (idx + 1) % 1000 == 0:
+        print(f"   Processing pair {idx + 1:,}/{len(pairs):,}...")
+    
+    # Check if symbols exist in lookup
+    if symbol_1 not in symbol_lookup or symbol_2 not in symbol_lookup:
+        missing_count += 1
+        continue
+    
+    # Check if this Month v Qtr spread should be excluded
+    if should_exclude_month_vs_quarter(symbol_1, symbol_2, symbol_lookup):
+        excluded_count += 1
+        continue
+    
     # Generate formula
     formula = generate_spread_formula(symbol_1, symbol_2, symbol_lookup)
     
@@ -245,6 +378,11 @@ for symbol_1, symbol_2 in pairs:
     }
     spreads_rows.append(spread_row)
 
+print(f"   ✓ Excluded {excluded_count:,} Month v Qtr spreads (month is component of quarter)")
+if missing_count > 0:
+    print(f"   ⚠️  Warning: {missing_count:,} pairs skipped (symbols not in lookup)")
+print(f"   ✓ Generated {len(spreads_rows):,} spread formulas")
+
 spreads_df = pd.DataFrame(spreads_rows)
 print(f"   ✓ Created {len(spreads_df)} spread symbols")
 
@@ -276,12 +414,11 @@ spreads_df = spreads_df[column_order]
 
 combined_df = pd.concat([outrights_df, spreads_df], ignore_index=True)
 
-print(f"   ✓ Total rows: {len(combined_df)}")
-print(f"   ✓ Expected: 15,576 (176 outrights + 15,400 spreads)")
-if len(combined_df) == 15576:
-    print(f"   ✓ Correct total!")
-else:
-    print(f"   ⚠️  WARNING: Expected 15,576, got {len(combined_df)}")
+print(f"   ✓ Total rows: {len(combined_df):,}")
+monthly_outrights = len(outrights_df[outrights_df['quarter_numb'] == 'N'])
+quarterly_outrights = len(outrights_df[outrights_df['quarter_numb'] == 'Y'])
+print(f"   ✓ Outrights: {len(outrights_df):,} (monthly: {monthly_outrights}, quarterly: {quarterly_outrights})")
+print(f"   ✓ Spreads: {len(spreads_df):,}")
 
 # Step 9: Validation
 print("\n[Step 9] Validating output...")
@@ -290,8 +427,10 @@ print("\n[Step 9] Validating output...")
 outright_count = len(combined_df[combined_df['spread_type'] == 'outright'])
 spread_count = len(combined_df[combined_df['spread_type'] == 'spread'])
 
-print(f"   Outrights: {outright_count} (expected 176)")
-print(f"   Spreads: {spread_count} (expected 15,400)")
+monthly_outright_count = len(combined_df[(combined_df['spread_type'] == 'outright') & (combined_df['quarter_numb'] == 'N')])
+quarterly_outright_count = len(combined_df[(combined_df['spread_type'] == 'outright') & (combined_df['quarter_numb'] == 'Y')])
+print(f"   Outrights: {outright_count:,} (monthly: {monthly_outright_count}, quarterly: {quarterly_outright_count})")
+print(f"   Spreads: {spread_count}")
 
 # Check component_months population
 outrights_with_months = len(combined_df[(combined_df['spread_type'] == 'outright') & 
@@ -327,19 +466,27 @@ print(sample_spread[['ice_symbol', 'symbol_root', 'product', 'component_months',
                      'symbol_1', 'symbol_2', 'product_2', 'component_months_2']].to_string())
 
 # Step 11: Save to CSV
-print("\n[Step 11] Saving to symbol_matrix.csv...")
-combined_df.to_csv('lists_and_matrix/symbol_matrix.csv', index=False)
-print(f"   ✓ Saved lists_and_matrix/symbol_matrix.csv")
+print("\n[Step 11] Saving to symbol_matrix_with_quarterlies.csv...")
+try:
+    output_path = 'lists_and_matrix/symbol_matrix_with_quarterlies.csv'
+    # Use quoting=csv.QUOTE_MINIMAL to ensure fields with commas are properly quoted
+    # This prevents parsing issues when reading the CSV back
+    combined_df.to_csv(output_path, index=False, quoting=csv.QUOTE_MINIMAL)
+    print(f"   ✓ Saved {output_path}")
+    print(f"   Please review the file. If correct, rename it to replace symbol_matrix.csv")
+except Exception as e:
+    print(f"   ✗ Error saving file: {e}")
+    import traceback
+    traceback.print_exc()
+    raise
 
 print("\n" + "=" * 80)
 print("ENHANCED SYMBOL MATRIX CREATION COMPLETE")
 print("=" * 80)
-print(f"\nOutput file: lists_and_matrix/symbol_matrix.csv")
+print(f"\nOutput file: lists_and_matrix/symbol_matrix_with_quarterlies.csv")
 print(f"Total rows: {len(combined_df):,}")
-print(f"  - Outrights: {outright_count:,}")
+print(f"  - Outrights: {outright_count:,} (monthly: {monthly_outright_count}, quarterly: {quarterly_outright_count})")
 print(f"  - Spreads: {spread_count:,}")
 print(f"Total columns: {len(combined_df.columns)}")
-print(f"\nNew columns added:")
-print(f"  - component_months_names (month code to name conversion)")
-print(f"  - component_months_2, component_months_names_2 (for spreads)")
-print(f"  - All symbol_2 metadata columns (product_2, location_2, etc.)")
+print(f"\nNote: Quarterlies (quarter_numb == 'Y') are now included in the matrix")
+print(f"      Month v Qtr spreads exclude months that are part of the quarter")

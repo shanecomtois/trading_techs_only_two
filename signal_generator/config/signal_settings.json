@@ -1,0 +1,409 @@
+{
+  "min_points_threshold": 75,
+  "max_signals_per_type": 10,
+  "atr_multipliers": {
+    "stop": 0.56,
+    "target": 0.83,
+    "comment": "Stop loss = stop_multiplier × ATR, Target = target_multiplier × ATR"
+  },
+  "position_sizing": {
+    "base_size": 100,
+    "method": "inverse_atr_pct",
+    "target_atr_pct": 5.0,
+    "comment": "Position size inversely proportional to ATR% of price. Higher volatility = smaller position. Improved formula: pos% = base × (target_atr_pct / actual_atr_pct). Target ATR% represents 'normal' volatility level.",
+    "base_volume_outright": 10,
+    "base_volume_spread_per_side": 10,
+    "max_volume": 30,
+    "min_volume": 10,
+    "base_multiplier_at_100pct": 1.5,
+    "comment_base_multiplier": "Multiplier applied when pos% = 100%. Example: 1.5 means 100% pos% = 10kb × 1.5 = 15kb. Set to 1.0 to disable.",
+    "scaling_method": "pos_pct_multiplier",
+    "comment_volumes": "Base volumes in kb. For spreads, base_volume_spread_per_side applies to each leg. Volumes scale using pos% as multiplier (pos% = 200% → 10kb × 2.0 = 20kb). Delta sizing now integrated. base_multiplier_at_100pct scales positions at 100% pos%.",
+    "min_volumes": {
+      "ABF": 11,
+      "AFE": 13,
+      "default": 10,
+      "comment": "Minimum volumes in kb. ABF=11kb increments, AFE=13kb increments, others=10kb minimum then 1kb increments. For spreads, leg with higher minimum becomes base leg."
+    }
+  },
+  "tenor_liquidity_bonus": {
+    "tenor_months": [2, 3, 4, 5, 6],
+    "comment_tenor": "Tenor window: contracts 2-6 months ahead from data_date month are considered 'in tenor'",
+    "liquidity_tiers": {
+      "tier_1": ["PRL", "PRN", "NBI", "PRC", "CL", "XRB", "HO"],
+      "tier_2": ["IBC", "NGE", "AFE"],
+      "tier_3": ["ABF", "NBR", "ETE", "NGL", "NGC", "ISO", "ISC", "NG"],
+      "comment": "Tier 1 = most liquid, Tier 2 = medium, Tier 3 = less liquid"
+    },
+    "bonus_points": {
+      "one_leg_in_tenor": 3,
+      "both_legs_in_tenor": 5,
+      "one_leg_tier1": 3,
+      "both_legs_tier1": 5,
+      "tier1_in_tenor_one_leg": 2,
+      "tier1_in_tenor_both_legs": 3,
+      "prior_week_active": 5,
+      "max_bonus": 10,
+      "comment": "Bonus points for tenor (2-6 months ahead) and liquidity (Tier 1 products). Max bonus capped to prevent over-weighting. PRWK bonus (prior_week_active) is separate and stacks on top of max_bonus."
+    }
+  },
+  "alignment_weights": {
+    "rsi": 1.0,
+    "stochastic": 1.0,
+    "cci": 1.0,
+    "adx": 1.5,
+    "bollinger": 1.0,
+    "correlation": 1.2,
+    "cointegration": 1.5,
+    "macd": 2.0,
+    "comment": "Weights for calculating weighted alignment score (0-100). Higher weight = more important indicator."
+  },
+  "spread_analysis": {
+    "cointegration": {
+      "significance_level": 0.05,
+      "comment": "P-value threshold for cointegration significance. Lower = stricter. 0.05 (5%) = standard, 0.01 (1%) = very strict, 0.10 (10%) = lenient. Should match pull_ohlc_data.py setting."
+    }
+  },
+  "strategies": {
+    "trend_following": {
+      "name": "Standard Trend Following Signals",
+      "description": "MACD Buy/Sell Cross as entry point with confluence indicators",
+      "base_points": {
+        "macd_cross": 50,
+        "comment": "Base points awarded for MACD line crossing signal line"
+      },
+      "confluence_bonuses": {
+        "rsi_aligned": {
+          "points": 10,
+          "description": "RSI aligned with signal direction (RSI > 70 for sell, < 30 for buy)"
+        },
+        "stochastic_aligned": {
+          "points": 10,
+          "description": "Stochastic aligned with signal direction"
+        },
+        "cci_aligned": {
+          "points": 10,
+          "description": "CCI aligned with signal direction"
+        },
+        "adx_strong": {
+          "points": 15,
+          "description": "ADX > 25 indicating strong trend"
+        },
+        "bollinger_aligned": {
+          "points": 10,
+          "description": "Price position relative to Bollinger Bands aligned with signal"
+        },
+        "correlation_high": {
+          "points": 10,
+          "description": "Correlation > 0.7 for spread components (spreads only)"
+        },
+        "cointegration": {
+          "points": 15,
+          "description": "Cointegration significant for spread components (spreads only)"
+        }
+      },
+      "trend_exhaustion_penalty": {
+        "enabled": true,
+        "max_penalty": 15,
+        "penalties": {
+          "rsi_extreme": {
+            "points": 10,
+            "buy_threshold": 75,
+            "sell_threshold": 25,
+            "description": "Penalty when RSI is extreme (RSI > 75 for buy signals, RSI < 25 for sell signals) - indicates trend already extended"
+          },
+          "price_distance_from_ema": {
+            "points": 5,
+            "ema_column": "ema_50",
+            "distance_percent": 5.0,
+            "description": "Penalty when price is far from EMA (price > 5% above EMA_50 for buy, < 5% below for sell) - indicates late entry"
+          },
+          "bollinger_extreme": {
+            "points": 5,
+            "description": "Penalty when price is at Bollinger Band extreme (at upper band for buy, lower band for sell) - indicates exhaustion"
+          }
+        },
+        "comment": "Penalties reduce points when entering a trend that's already extended. Helps avoid late entries. Max penalty caps total deduction."
+      }
+    },
+    "enhanced_trend_following": {
+      "name": "Enhanced Trend Following Signals",
+      "description": "Multi-trigger trend system: EMA crossover, Supertrend, MACD cross, or Aroon strong trend with ADX confirmation",
+      "entry_triggers": {
+        "enabled": {
+          "ema_crossover": true,
+          "supertrend": true,
+          "macd_cross": true,
+          "aroon_strong": true,
+          "comment": "Enable/disable each entry trigger. Multiple triggers can fire simultaneously."
+        },
+        "base_points": {
+          "ema_crossover": 40,
+          "supertrend": 45,
+          "macd_cross": 50,
+          "aroon_strong": 40,
+          "comment": "Base points awarded for each trigger type. Highest trigger's base points are used if multiple fire."
+        },
+        "ema_crossover": {
+          "fast_ema": "ema_20",
+          "slow_ema": "ema_50",
+          "comment": "Buy: Price crosses above fast_ema AND fast_ema > slow_ema. Sell: Price crosses below fast_ema AND fast_ema < slow_ema."
+        },
+        "supertrend": {
+          "comment": "Buy: supertrend_direction changes to 'up'. Sell: supertrend_direction changes to 'down'."
+        },
+        "macd_cross": {
+          "comment": "Buy: MACD line crosses above signal line. Sell: MACD line crosses below signal line. Requires previous week data."
+        },
+        "aroon_strong": {
+          "oscillator_threshold": 50,
+          "comment": "Buy: aroon_oscillator > threshold AND aroon_strong_uptrend = True. Sell: aroon_oscillator < -threshold AND aroon_strong_downtrend = True."
+        }
+      },
+      "confirmations": {
+        "required": {
+          "adx_strong": true,
+          "di_alignment": true,
+          "comment": "Required confirmations that must pass for signal to be valid. If false, treated as bonus only."
+        },
+        "adx_strong": {
+          "min_adx": 25,
+          "strong_adx": 30,
+          "comment": "ADX must be >= min_adx for signal. strong_adx gives additional bonus."
+        },
+        "di_alignment": {
+          "comment": "For buy: DI+ > DI-. For sell: DI- > DI+."
+        },
+        "momentum_required": 2,
+        "momentum_indicators": {
+          "rsi_aligned": true,
+          "macd_histogram_aligned": true,
+          "stochastic_aligned": true,
+          "comment": "At least 'momentum_required' of these must align for signal. RSI: >50 buy, <50 sell. MACD histogram: positive buy, negative sell. Stochastic: K>D buy, K<D sell."
+        }
+      },
+      "confluence_bonuses": {
+        "adx_strong": {
+          "points": 15,
+          "description": "ADX >= 25 indicating strong trend (required confirmation)"
+        },
+        "adx_very_strong": {
+          "points": 5,
+          "description": "ADX >= 30 indicating very strong trend"
+        },
+        "di_alignment": {
+          "points": 10,
+          "description": "DI+ > DI- for buy, DI- > DI+ for sell (required confirmation)"
+        },
+        "rsi_aligned": {
+          "points": 10,
+          "description": "RSI aligned with signal direction (RSI > 50 for buy, < 50 for sell)"
+        },
+        "macd_histogram_aligned": {
+          "points": 10,
+          "description": "MACD histogram positive for buy, negative for sell"
+        },
+        "stochastic_aligned": {
+          "points": 10,
+          "description": "Stochastic aligned (Stoch_K > Stoch_D for buy, < for sell)"
+        },
+        "ema_50_aligned": {
+          "points": 5,
+          "description": "Price above EMA 50 for buy, below for sell"
+        },
+        "ema_100_aligned": {
+          "points": 5,
+          "description": "Price above EMA 100 for buy, below for sell"
+        },
+        "ema_200_aligned": {
+          "points": 5,
+          "description": "Price above EMA 200 for buy, below for sell"
+        },
+        "bollinger_aligned": {
+          "points": 10,
+          "description": "Price position relative to Bollinger Bands aligned with signal"
+        },
+        "correlation_high": {
+          "points": 10,
+          "description": "Correlation > 0.7 for spread components (spreads only)"
+        },
+        "cointegration": {
+          "points": 15,
+          "description": "Cointegration significant for spread components (spreads only)"
+        }
+      },
+      "trend_exhaustion_penalty": {
+        "enabled": true,
+        "max_penalty": 15,
+        "penalties": {
+          "rsi_extreme": {
+            "points": 10,
+            "buy_threshold": 75,
+            "sell_threshold": 25,
+            "description": "Penalty when RSI is extreme (RSI > 75 for buy signals, RSI < 25 for sell signals) - indicates trend already extended"
+          },
+          "price_distance_from_ema": {
+            "points": 5,
+            "ema_column": "ema_50",
+            "distance_percent": 5.0,
+            "description": "Penalty when price is far from EMA (price > 5% above EMA_50 for buy, < 5% below for sell) - indicates late entry"
+          },
+          "bollinger_extreme": {
+            "points": 5,
+            "description": "Penalty when price is at Bollinger Band extreme (at upper band for buy, lower band for sell) - indicates exhaustion"
+          }
+        },
+        "comment": "Penalties reduce points when entering a trend that's already extended. Helps avoid late entries. Max penalty caps total deduction."
+      }
+    },
+    "mean_reversion": {
+      "name": "Standard Mean Reversion System",
+      "description": "Price percentile extreme as entry point with confluence indicators",
+      "base_points": {
+        "price_percentile_extreme": 50,
+        "comment": "Base points for price percentile < 25 (buy) or > 75 (sell)"
+      },
+      "confluence_bonuses": {
+        "rsi_percentile_aligned": {
+          "points": 15,
+          "description": "RSI percentile aligned with price percentile extreme"
+        },
+        "macd_reversal": {
+          "points": 10,
+          "description": "MACD histogram showing reversal signal"
+        },
+        "correlation_high": {
+          "points": 10,
+          "description": "Correlation > 0.7 for spread components (spreads only)"
+        },
+        "cointegration": {
+          "points": 20,
+          "description": "Cointegration significant for spread components (spreads only). Higher weight for mean reversion."
+        },
+        "bollinger_extreme": {
+          "points": 10,
+          "description": "Price near Bollinger Band extreme (lower band for buy, upper for sell)"
+        }
+      }
+    },
+    "macd_rsi_exhaustion": {
+      "name": "MACD/RSI Exhaustion Signals",
+      "description": "Mean reversion system: Buy when MACD or RSI exhausted to downside, Sell when exhausted to upside",
+      "base_points": {
+        "exhaustion_signal": 50,
+        "comment": "Base points for MACD or RSI exhaustion signal (buy or sell)"
+      },
+      "entry_conditions": {
+        "macd_exhaustion": {
+          "buy": {
+            "percentile_threshold": 15,
+            "percentile_required": true,
+            "zero_line_preferred": true,
+            "crossover_preferred": true,
+            "comment": "Buy: MACD percentile < 15 (required) AND (MACD < 0 OR MACD crossing above signal). Percentile required, zero line or crossover preferred."
+          },
+          "sell": {
+            "percentile_threshold": 85,
+            "percentile_required": true,
+            "zero_line_preferred": true,
+            "crossover_preferred": true,
+            "comment": "Sell: MACD percentile > 85 (required) AND (MACD > 0 OR MACD crossing below signal). Percentile required, zero line or crossover preferred."
+          }
+        },
+        "rsi_exhaustion": {
+          "buy": {
+            "percentile_threshold": 15,
+            "absolute_threshold": 25,
+            "use_percentile_or_absolute": true,
+            "momentum_reversal_required": true,
+            "comment": "Buy: (RSI percentile < 15 OR RSI < 25) AND RSI turning up (rsi > prev_rsi)"
+          },
+          "sell": {
+            "percentile_threshold": 85,
+            "absolute_threshold": 75,
+            "use_percentile_or_absolute": true,
+            "momentum_reversal_required": true,
+            "comment": "Sell: (RSI percentile > 85 OR RSI > 75) AND RSI turning down (rsi < prev_rsi)"
+          }
+        },
+        "comment": "Signal triggers if MACD exhaustion OR RSI exhaustion (or both). Both can trigger simultaneously for stronger signal."
+      },
+      "confluence_bonuses": {
+        "adx_strong": {
+          "points": 15,
+          "description": "ADX > 25 indicating strong trend"
+        },
+        "bollinger_aligned": {
+          "points": 10,
+          "description": "Price position relative to Bollinger Bands aligned with signal"
+        },
+        "correlation_high": {
+          "points": 10,
+          "description": "Correlation > 0.7 for spread components (spreads only)"
+        },
+        "cointegration": {
+          "points": 15,
+          "description": "Cointegration significant for spread components (spreads only)"
+        },
+        "stochastic_aligned": {
+          "points": 10,
+          "description": "Stochastic aligned with signal direction"
+        },
+        "cci_aligned": {
+          "points": 10,
+          "description": "CCI aligned with signal direction"
+        },
+        "both_indicators_exhausted": {
+          "points": 10,
+          "description": "Both MACD and RSI exhaustion conditions met simultaneously (stronger signal)"
+        },
+        "comment": "Confluence bonuses apply regardless of whether MACD or RSI triggered the signal. Both indicators exhausted gives additional bonus."
+      }
+    },
+    "moving_average": {
+      "name": "Simple Moving Average Signals",
+      "description": "Always-on system: Price above EMA = buy, Price below EMA = sell (for debugging)",
+      "base_points": {
+        "price_ema_cross": 50,
+        "comment": "Base points for price position relative to EMA 20 (above = buy, below = sell)"
+      },
+      "confluence_bonuses": {
+        "rsi_aligned": {
+          "points": 10,
+          "description": "RSI aligned with signal direction (RSI > 70 for sell, < 30 for buy)"
+        },
+        "adx_strong": {
+          "points": 15,
+          "description": "ADX > 25 indicating strong trend"
+        },
+        "bollinger_aligned": {
+          "points": 10,
+          "description": "Price position relative to Bollinger Bands aligned with signal"
+        },
+        "correlation_high": {
+          "points": 10,
+          "description": "Correlation > 0.7 for spread components (spreads only)"
+        },
+        "cointegration": {
+          "points": 15,
+          "description": "Cointegration significant for spread components (spreads only)"
+        }
+      }
+    }
+  },
+  "ice_chat": {
+    "quantities": {
+      "outright_fixed": "10kb",
+      "quarterly_fixed": "10kb per mo",
+      "comment": "DEPRECATED: Fixed placeholder quantities. Now using position_sizing.base_volume_* with pos% scaling. Kept for backward compatibility."
+    }
+  },
+  "report_settings": {
+    "output_directory": "output",
+    "filename_prefix": "technical_signals_report",
+    "include_trend_confluence_summary": true,
+    "include_ice_chat_summary": true
+  }
+}
+
+

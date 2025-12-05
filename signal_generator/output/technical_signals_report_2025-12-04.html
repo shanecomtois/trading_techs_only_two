@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='utf-8'>
+<title>Technical Signals Report</title>
+<style>
+/* ====== UET Light Theme (global) ====== */
+:root{
+  --bg:#f8fafc;
+  --fg:#0f172a;
+  --muted:#475569;
+  --border:#e5e7eb;
+  --card-bg:#ffffff;
+  --accent:#0ea5e9;
+  --buy:#10b981;
+  --sell:#ef4444;
+  --shadow:0 8px 30px rgba(0,0,0,0.06);
+}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+  background:var(--bg);
+  color:var(--fg);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+.uet-page{max-width:clamp(1280px, 96vw, 1920px); margin:18px auto 64px; padding:0 18px;}
+h1{font-size:28px; font-weight:700; margin:0 0 12px}
+h2{font-size:20px; font-weight:700; margin:18px 0 8px}
+h3{font-size:16px; font-weight:600; margin:14px 0 6px}
+.uet-subtle{color:var(--muted); font-size:13px}
+.uet-card{
+  background:var(--card-bg); border:1px solid var(--border); border-radius:12px;
+  padding:14px 16px; box-shadow:var(--shadow); margin:14px 0;
+}
+.uet-grid{display:grid; gap:8px}
+.uet-grid.cols-2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.uet-grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.uet-grid.cols-4{grid-template-columns:repeat(4,1fr)}
+.uet-grid.cols-5{grid-template-columns:repeat(5,1fr)}
+@media (min-width: 900px){
+  .uet-grid.cols-2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .uet-grid.cols-3{grid-template-columns:repeat(3,1fr)}
+  .uet-grid.cols-4{grid-template-columns:repeat(4,1fr)}
+  .uet-grid.cols-5{grid-template-columns:repeat(5,1fr)}
+}
+/* Compact KPI cards */
+.uet-kpi-card{background:var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px; box-shadow:0 2px 4px rgba(0,0,0,0.05);}
+.uet-kpi-label{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; font-weight:600}
+.uet-kpi-value{font-size:18px; font-weight:700; color:#0f172a; line-height:1.2}
+.uet-kpi-subvalue{font-size:11px; color:var(--muted); margin-top:2px}
+/* Compact strategy cards */
+.uet-strategy-mini{display:flex; align-items:center; justify-content:space-between; padding:8px 10px; background:#f8fafc; border-radius:6px; border-left:3px solid #cbd5e1}
+.uet-strategy-mini-name{font-size:11px; font-weight:600; color:#0f172a}
+.uet-strategy-mini-stats{display:flex; gap:12px; font-size:11px}
+.uet-strategy-mini-stat{text-align:center}
+.uet-strategy-mini-stat-label{font-size:9px; color:var(--muted); text-transform:uppercase}
+.uet-strategy-mini-stat-value{font-size:14px; font-weight:700; color:#0f172a}
+/* Compact alignment badges */
+.uet-alignment-compact{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+.uet-alignment-badge{display:inline-flex; align-items:center; gap:4px; padding:4px 8px; background:#f1f5f9; border-radius:4px; font-size:10px; font-weight:600}
+.uet-pill{display:inline-block; border-radius:999px; padding:2px 10px; font-size:10px; color:#fff}
+.uet-pill.buy{background:var(--buy)}
+.uet-pill.sell{background:var(--sell)}
+/* Banners */
+.uet-banner{display:inline-block; padding:6px 12px; border-radius:10px; color:#fff !important; font-weight:600}
+.uet-banner.buy{background:#10b981 !important; color:#fff !important}
+.uet-banner.sell{background:#ef4444 !important; color:#fff !important}
+/* Explanation Cards */
+.uet-explanation-card{
+  background:linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border:1px solid #e2e8f0;
+  border-radius:12px;
+  padding:16px 20px;
+  margin:12px 0;
+  box-shadow:0 2px 8px rgba(0,0,0,0.04);
+  transition:all 0.2s ease;
+}
+.uet-explanation-card:hover{
+  box-shadow:0 4px 12px rgba(0,0,0,0.08);
+  transform:translateY(-1px);
+}
+.uet-explanation-card h4{
+  margin:0 0 12px 0;
+  color:var(--fg);
+  font-size:16px;
+  font-weight:600;
+}
+.uet-explanation-card p{
+  margin:8px 0;
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.5;
+}
+.uet-explanation-card ul{
+  margin:8px 0;
+  padding-left:20px;
+}
+.uet-explanation-card li{
+  margin:4px 0;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.4;
+}
+.uet-explanation-card strong{
+  color:var(--fg);
+  font-weight:600;
+}
+
+/* Tables */
+table.uet-table{width:100%; border-collapse:collapse; background:var(--card-bg); border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:var(--shadow); table-layout:fixed}
+table.uet-table thead th{
+  background:#f1f5f9; text-align:left; padding:8px 10px; border-bottom:2px solid var(--border); border-right:1px solid var(--border); font-size:11px; color:#0f172a;
+}
+table.uet-table thead th:last-child{border-right:none}
+table.uet-table thead th:nth-child(1){width:20%}  /* ICE Symbol */
+table.uet-table thead th:nth-child(2){width:10%}  /* Strategy_Type */
+table.uet-table thead th:nth-child(3){width:6%}   /* Signal */
+table.uet-table thead th:nth-child(4){width:8%}   /* Price */
+table.uet-table thead th:nth-child(5){width:8%}   /* Stop */
+table.uet-table thead th:nth-child(6){width:8%}   /* Target */
+table.uet-table thead th:nth-child(7){width:6%}   /* Pos % */
+table.uet-table thead th:nth-child(8){width:6%}   /* Score */
+table.uet-table thead th:nth-child(9){width:6%}   /* Alignment */
+table.uet-table thead th:nth-child(10){width:6%}  /* PRWK */
+table.uet-table thead th:nth-child(11){width:16%} /* WeekDate */
+table.uet-table tbody td{
+  padding:8px 10px; border-bottom:1px solid var(--border); border-right:1px solid var(--border); vertical-align:top; font-size:11px; word-wrap:break-word; overflow-wrap:break-word;
+}
+table.uet-table tbody td:last-child{border-right:none}
+table.uet-table tbody tr:last-child td{border-bottom:none}
+.uet-num{text-align:right}
+.uet-center{text-align:center}
+.uet-note{color:var(--muted); font-size:10px; margin-top:6px}
+/* ICE Chat + Score rows */
+tr.uet-icechat td{ background:#e0f2fe; color:#000000; padding:8px 10px; }  /* Very light blue background with black font for ICE Chat */
+tr.uet-scoredetails td{ background:#f0f9ff; color:#000000; padding:8px 10px; }  /* Lightest blue background with black font for Score details */
+.icechat-line{ font-size:10px; color:#000000; font-weight:bold; font-style:normal; padding:2px 2px 4px 2px; margin:0; }
+
+/* Signal header row (above each signal) */
+tr.uet-signal-header th{ 
+  border-bottom: 2px solid rgba(255,255,255,0.3); 
+  text-align: left;
+}
+
+/* Alignment icons */
+.uet-alignment-icon{
+  display: inline-block;
+  text-align: center;
+  min-width: 60px;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+/* Fallback badge */
+.uet-fallback-badge{
+  display: inline-block;
+  background: #f97316;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+/* Fallback row styling */
+tr.uet-fallback-row td{
+  background: #fff7ed;
+  opacity: 0.9;
+}
+
+/* Legend styling */
+.legend-item{
+  display: flex;
+  align-items: center;
+  margin: 8px 0;
+  padding: 4px 0;
+  font-size: 13px;
+}
+.legend-item strong{
+  margin-left: 8px;
+  color: var(--fg);
+}
+</style>
+
+<style>
+/* UET banner-kpis and buy/sell banners */
+.banner{font-weight:700;letter-spacing:.5px;margin:16px 0 8px 0;padding:10px 14px;border-radius:8px;color:#0b1220;display:inline-block;box-shadow:0 1px 2px rgba(0,0,0,0.06);}
+.banner-buy{background:#16a34a20;border:1px solid #16a34a33;}
+.banner-buy::before{content:"BUY";background:#16a34a;margin-right:10px;padding:2px 8px;border-radius:999px;font-size:.75rem;color:#fff;}
+.banner-sell{background:#dc262620;border:1px solid #dc262633;}
+.banner-sell::before{content:"SELL";background:#dc2626;margin-right:10px;padding:2px 8px;border-radius:999px;font-size:.75rem;color:#fff;}
+</style>
+
+</head>
+<body>
+<div class='uet-page'>
+  <h1>Technical Signals Report</h1>
+
+  <div class='uet-card' style='padding:12px 14px; margin-bottom:12px;'>
+    <div class='uet-grid cols-5' style='margin-bottom:10px;'>
+      <div class='uet-kpi-card'>
+        <div class='uet-kpi-label'>Run Date</div>
+        <div class='uet-kpi-value'>2025-12-04</div>
+      </div>
+      <div class='uet-kpi-card'>
+        <div class='uet-kpi-label'>Data Date</div>
+        <div class='uet-kpi-value'>2024-07-12</div>
+        <div class='uet-kpi-subvalue'>Friday</div>
+      </div>
+      <div class='uet-kpi-card'>
+        <div class='uet-kpi-label'>High-Conviction (≥75)</div>
+        <div class='uet-kpi-value'>50</div>
+        <div class='uet-kpi-subvalue'>of 50 total</div>
+      </div>
+      <div class='uet-kpi-card'>
+        <div class='uet-kpi-label'>Alignment</div>
+        <div class='uet-kpi-value'>20</div>
+        <div class='uet-kpi-subvalue'>20🔥 0⭐</div>
+      </div>
+      <div class='uet-kpi-card'>
+        <div class='uet-kpi-label'>Low Confidence</div>
+        <div class='uet-kpi-value'>30</div>
+        <div class='uet-kpi-subvalue'>0⚠️ 30💥</div>
+      </div>
+    </div>
+    <div style='display:flex; flex-direction:column; gap:6px; margin-bottom:10px;'>
+      <div class='uet-strategy-mini'>
+        <div class='uet-strategy-mini-name'>📈 MACD Trend Following</div>
+        <div class='uet-strategy-mini-stats'>
+          <div class='uet-strategy-mini-stat'><div class='uet-strategy-mini-stat-label'>Buy</div><div class='uet-strategy-mini-stat-value'>0</div></div>
+          <div class='uet-strategy-mini-stat'><div class='uet-strategy-mini-stat-label'>Sell</div><div class='uet-strategy-mini-stat-value'>0</div></div>
+          <div class='uet-strategy-mini-stat'><div class='uet-strategy-mini-stat-label'>Total</div><div class='uet-strategy-mini-stat-value'>0</div></div>
+        </div>
+      </div>
+      <div class='uet-strategy-mini'>
+        <div class='uet-strategy-mini-name'>🚀 Enhanced Trend Following</div>
+        <div class='uet-strategy-mini-stats'>
+          <div class='uet-strategy-mini-stat'><div class='uet-strategy-mini-stat-label'>Buy</div><div class='uet-strategy-mini-stat-value'>10</div></div>
+          <div class='uet-strategy-mini-stat'><div class='uet-strategy-mini-stat-label'>Sell</div><div class='uet-strategy-mini-stat-value'>10</div></div>
+          <div class='uet-strategy-mini-stat'><div class='uet-strategy-mini-stat-label'>Total</div><div class='uet-strategy-mini-stat-value'>20</div></div>
+        </div>
+      </div>
+      <div class='uet-strategy-mini'>
+        <div class='uet-strategy-mini-name'>🔄 Mean Reversion</div>
+        <div class='uet-strategy-mini-stats'>
+          <div class='uet-strategy-mini-stat'><div class='uet-strategy-mini-stat-label'>Buy</div><div class='uet-strategy-mini-stat-value'>10</div></div>
+          <div class='uet-strategy-mini-stat'><div class='uet-strategy-mini-stat-label'>Sell</div><div class='uet-strategy-mini-stat-value'>10</div></div>
+          <div class='uet-strategy-mini-stat'><div class='uet-strategy-mini-stat-label'>Total</div><div class='uet-strategy-mini-stat-value'>20</div></div>
+        </div>
+      </div>
+      <div class='uet-strategy-mini'>
+        <div class='uet-strategy-mini-name'>⚡ MACD/RSI Exhaustion</div>
+        <div class='uet-strategy-mini-stats'>
+          <div class='uet-strategy-mini-stat'><div class='uet-strategy-mini-stat-label'>Buy</div><div class='uet-strategy-mini-stat-value'>10</div></div>
+          <div class='uet-strategy-mini-stat'><div class='uet-strategy-mini-stat-label'>Sell</div><div class='uet-strategy-mini-stat-value'>0</div></div>
+          <div class='uet-strategy-mini-stat'><div class='uet-strategy-mini-stat-label'>Total</div><div class='uet-strategy-mini-stat-value'>10</div></div>
+        </div>
+      </div>
+    </div>
+    <div style='padding:8px 10px; background:#f8fafc; border-radius:6px; border:1px solid #e2e8f0;'>
+      <div class='uet-alignment-compact'>
+        <div class='uet-alignment-badge'><span>🔥</span> <span>Strong Agree (90+)</span></div>
+        <div class='uet-alignment-badge'><span>⭐</span> <span>Agree (80-89)</span></div>
+        <div class='uet-alignment-badge'><span>⚡</span> <span>Neutral (70-79)</span></div>
+        <div class='uet-alignment-badge'><span>⚠️</span> <span>Disagree (60-69)</span></div>
+        <div class='uet-alignment-badge'><span>💥</span> <span>Strong Disagree (<60)</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class='uet-card'>
+    <h2>📈 MACD Trend Following System (0 signals)</h2>
+    
+        <div class='uet-explanation-card'>
+            <h4>Standard Trend Following Signals</h4>
+            <p><strong>Purpose:</strong> MACD Buy/Sell Cross as entry point with confluence indicators</p>
+            <p><strong>Key Requirements:</strong></p>
+            <ul>
+                <li>Entry Point: MACD Cross over buy/sell as the entry point</li>
+                <li>Confluence Indicators: RSI, Stoch, CCI, ADX, Bollinger Bands, Correlation, Cointegration</li>
+                <li>Min Points >= 75</li>
+                <li>Max Signals < 10 for each signal type</li>
+            </ul>
+        </div>
+        
+    <div class='uet-grid cols-2'>
+      <div>
+        <h3><span class='uet-banner buy'>BUY</span></h3>
+        <div class='uet-note'>No qualifying signals</div>
+      </div>
+      <div>
+        <h3><span class='uet-banner sell'>SELL</span></h3>
+        <div class='uet-note'>No qualifying signals</div>
+      </div>
+    </div>
+  </div>
+
+  <div class='uet-card'>
+    <h2>🚀 Enhanced Trend Following Signals (20 signals)</h2>
+    
+        <div class='uet-explanation-card'>
+            <h4>Enhanced Trend Following Signals</h4>
+            <p><strong>Purpose:</strong> Multi-trigger trend system: EMA crossover, Supertrend, MACD cross, or Aroon strong trend with ADX confirmation</p>
+            <p><strong>Key Requirements:</strong></p>
+            <ul>
+                <li>Entry Point: </li>
+                <li>Confluence Indicators: ADX, ADX, RSI, MACD, Stoch, Bollinger Bands, Correlation, Cointegration</li>
+                <li>Min Points >= 75</li>
+                <li>Max Signals < 10 for each signal type</li>
+            </ul>
+        </div>
+        
+    <div class='uet-grid cols-2'>
+      <div>
+        <h3><span class='uet-banner buy'>BUY</span></h3>
+<table class="uet-table"><thead><tr style="background-color: #10b981; color: #ffffff;"><th>ICE Symbol</th><th>Strategy_Type</th><th>Signal</th><th>Price</th><th>Stop</th><th>Target</th><th>Pos %</th><th>Score</th><th>Alignment</th><th>PRWK</th><th>WeekDate</th></tr></thead><tbody><tr><td><strong>=(&#x27;%IBC N!-IEU&#x27;)-(&#x27;%PRL K!-IEU&#x27;)</strong></td><td>Enhanced Trend</td><td>Buy</td><td>Pay $0.1764</td><td>Rcv $0.1471</td><td>Rcv $0.2199</td><td class="uet-num">16.8%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">🔥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 40 + ADX +15 + RSI +0 + STOCH +0 + CORR +0 + COINT +15 + BBW +0 + ADX_VERY_STRONG +5 + DI_ALIGNMENT +10 + MACD_HISTOGRAM_ALIGNED +10 + EMA_50_ALIGNED +5 + EMA_100_ALIGNED +5 + EMA_200_ALIGNED +0 + EMA_DIST -5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0524</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 10kb Conway Normal Butane (C) in Jul &#x27;25 and sell 12kb MB LST Propane (LST) in May &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%IBC N!-IEU&#x27;)-(&#x27;%PRN K!-IEU&#x27;)</strong></td><td>Enhanced Trend</td><td>Buy</td><td>Pay $0.1776</td><td>Rcv $0.1486</td><td>Rcv $0.2206</td><td class="uet-num">17.1%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">🔥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 40 + ADX +15 + RSI +0 + STOCH +0 + CORR +0 + COINT +15 + BBW +0 + ADX_VERY_STRONG +5 + DI_ALIGNMENT +10 + MACD_HISTOGRAM_ALIGNED +10 + EMA_50_ALIGNED +5 + EMA_100_ALIGNED +5 + EMA_200_ALIGNED +0 + EMA_DIST -5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0518</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 10kb Conway Normal Butane (C) in Jul &#x27;25 and sell 12kb MB NTET Propane (NTET) in May &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%IBC N!-IEU&#x27;)-(&#x27;%PRN M!-IEU&#x27;)</strong></td><td>Enhanced Trend</td><td>Buy</td><td>Pay $0.1851</td><td>Rcv $0.1551</td><td>Rcv $0.2297</td><td class="uet-num">17.3%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">🔥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 40 + ADX +15 + RSI +0 + STOCH +0 + CORR +0 + COINT +15 + BBW +0 + ADX_VERY_STRONG +5 + DI_ALIGNMENT +10 + MACD_HISTOGRAM_ALIGNED +10 + EMA_50_ALIGNED +5 + EMA_100_ALIGNED +5 + EMA_200_ALIGNED +0 + EMA_DIST -5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0536</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 10kb Conway Normal Butane (C) in Jul &#x27;25 and sell 12kb MB NTET Propane (NTET) in Jun &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%IBC N!-IEU&#x27;)-(((&#x27;%PRL J!-IEU&#x27;)+(&#x27;%PRL K!-IEU&#x27;)+(&#x27;%PRL M!-IEU&#x27;))/3)</strong></td><td>Enhanced Trend</td><td>Buy</td><td>Pay $0.1743</td><td>Rcv $0.1325</td><td>Rcv $0.2363</td><td class="uet-num">11.7%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">🔥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 40 + ADX +15 + RSI +0 + STOCH +0 + CORR +0 + COINT +15 + BBW +0 + ADX_VERY_STRONG +5 + DI_ALIGNMENT +10 + MACD_HISTOGRAM_ALIGNED +10 + EMA_50_ALIGNED +5 + EMA_100_ALIGNED +5 + EMA_200_ALIGNED +0 + EMA_DIST -5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0746</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 30kb Conway Normal Butane (C) in Jul &#x27;25 and sell 10kb per mo MB LST Propane (LST) in Q2 &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%IBC Q!-IEU&#x27;)-(&#x27;%NBI M!-IEU&#x27;)</strong></td><td>Enhanced Trend</td><td>Buy</td><td>Pay $0.0675</td><td>Rcv $0.0366</td><td>Rcv $0.1133</td><td class="uet-num">10.0%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">🔥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 40 + ADX +15 + RSI +0 + STOCH +0 + CORR +0 + COINT +15 + BBW +0 + ADX_VERY_STRONG +5 + DI_ALIGNMENT +10 + MACD_HISTOGRAM_ALIGNED +10 + EMA_50_ALIGNED +5 + EMA_100_ALIGNED +5 + EMA_200_ALIGNED +0 + EMA_DIST -5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0552</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 10kb Conway Normal Butane (C) in Aug &#x27;25 and sell 10kb MB NTET Normal Butane (NTET) in Jun &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%ISO N!-IEU&#x27;)-(&#x27;%NBI J!-IEU&#x27;)</strong></td><td>Enhanced Trend</td><td>Buy</td><td>Pay $0.2422</td><td>Rcv $0.2058</td><td>Rcv $0.2962</td><td class="uet-num">18.6%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">🔥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 40 + ADX +15 + RSI +0 + STOCH +0 + CORR +0 + COINT +15 + BBW +0 + ADX_VERY_STRONG +5 + DI_ALIGNMENT +10 + MACD_HISTOGRAM_ALIGNED +10 + EMA_50_ALIGNED +5 + EMA_100_ALIGNED +5 + EMA_200_ALIGNED +0 + EMA_DIST -5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0651</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 10kb MB NTET Iso Butane (NTET) in Jul &#x27;25 and sell 11kb MB NTET Normal Butane (NTET) in Apr &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%ISO N!-IEU&#x27;)-(&#x27;%NBI K!-IEU&#x27;)</strong></td><td>Enhanced Trend</td><td>Buy</td><td>Pay $0.2597</td><td>Rcv $0.2259</td><td>Rcv $0.3098</td><td class="uet-num">21.5%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">🔥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 40 + ADX +15 + RSI +0 + STOCH +0 + CORR +0 + COINT +15 + BBW +0 + ADX_VERY_STRONG +5 + DI_ALIGNMENT +10 + MACD_HISTOGRAM_ALIGNED +10 + EMA_50_ALIGNED +5 + EMA_100_ALIGNED +5 + EMA_200_ALIGNED +0 + EMA_DIST -5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0604</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 10kb MB NTET Iso Butane (NTET) in Jul &#x27;25 and sell 11kb MB NTET Normal Butane (NTET) in May &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%ISO N!-IEU&#x27;)-(&#x27;%NBI M!-IEU&#x27;)</strong></td><td>Enhanced Trend</td><td>Buy</td><td>Pay $0.2659</td><td>Rcv $0.2293</td><td>Rcv $0.3203</td><td class="uet-num">20.3%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">🔥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 40 + ADX +15 + RSI +0 + STOCH +0 + CORR +0 + COINT +15 + BBW +0 + ADX_VERY_STRONG +5 + DI_ALIGNMENT +10 + MACD_HISTOGRAM_ALIGNED +10 + EMA_50_ALIGNED +5 + EMA_100_ALIGNED +5 + EMA_200_ALIGNED +0 + EMA_DIST -5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0654</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 10kb MB NTET Iso Butane (NTET) in Jul &#x27;25 and sell 11kb MB NTET Normal Butane (NTET) in Jun &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%ISO N!-IEU&#x27;)-(&#x27;%PRC M!-IEU&#x27;)</strong></td><td>Enhanced Trend</td><td>Buy</td><td>Pay $0.4172</td><td>Rcv $0.3827</td><td>Rcv $0.4684</td><td class="uet-num">33.9%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">🔥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 40 + ADX +15 + RSI +0 + STOCH +0 + CORR +0 + COINT +15 + BBW +0 + ADX_VERY_STRONG +5 + DI_ALIGNMENT +10 + MACD_HISTOGRAM_ALIGNED +10 + EMA_50_ALIGNED +5 + EMA_100_ALIGNED +5 + EMA_200_ALIGNED +0 + EMA_DIST -5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0616</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 10kb MB NTET Iso Butane (NTET) in Jul &#x27;25 and sell 14kb Conway Propane (C) in Jun &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%ISO N!-IEU&#x27;)-(&#x27;%PRN M!-IEU&#x27;)</strong></td><td>Enhanced Trend</td><td>Buy</td><td>Pay $0.3922</td><td>Rcv $0.3569</td><td>Rcv $0.4446</td><td class="uet-num">31.1%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">🔥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 40 + ADX +15 + RSI +0 + STOCH +0 + CORR +0 + COINT +15 + BBW +0 + ADX_VERY_STRONG +5 + DI_ALIGNMENT +10 + MACD_HISTOGRAM_ALIGNED +10 + EMA_50_ALIGNED +5 + EMA_100_ALIGNED +5 + EMA_200_ALIGNED +0 + EMA_DIST -5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0631</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 10kb MB NTET Iso Butane (NTET) in Jul &#x27;25 and sell 13kb MB NTET Propane (NTET) in Jun &#x27;25?</div></td></tr></tbody></table>
+      </div>
+      <div>
+        <h3><span class='uet-banner sell'>SELL</span></h3>
+<table class="uet-table"><thead><tr style="background-color: #ef4444; color: #ffffff;"><th>ICE Symbol</th><th>Strategy_Type</th><th>Signal</th><th>Price</th><th>Stop</th><th>Target</th><th>Pos %</th><th>Score</th><th>Alignment</th><th>PRWK</th><th>WeekDate</th></tr></thead><tbody><tr><td><strong>=(&#x27;%AFE J!-IEU&#x27;)/521-(((&#x27;%ISO V!-IEU&#x27;)+(&#x27;%ISO X!-IEU&#x27;)+(&#x27;%ISO Z!-IEU&#x27;))/3)</strong></td><td>Enhanced Trend</td><td>Sell</td><td>Rcv $0.0152</td><td>Pay $0.0596</td><td>Rcv $0.0507</td><td class="uet-num">10.0%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">🔥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 40 + ADX +15 + RSI +0 + STOCH +0 + CORR +0 + COINT +15 + BBW +0 + ADX_VERY_STRONG +5 + DI_ALIGNMENT +10 + MACD_HISTOGRAM_ALIGNED +10 + EMA_50_ALIGNED +5 + EMA_100_ALIGNED +5 + EMA_200_ALIGNED +0 + EMA_DIST -5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0794</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I sell 26kb Far East Propane (EAST) in Apr &#x27;25 and buy 10kb per mo MB NTET Iso Butane (NTET) in Q4 &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%CL K!&#x27;)/42-(((&#x27;%IBC V!-IEU&#x27;)+(&#x27;%IBC X!-IEU&#x27;)+(&#x27;%IBC Z!-IEU&#x27;))/3)</strong></td><td>Enhanced Trend</td><td>Sell</td><td>Rcv $0.7926</td><td>Pay $0.8636</td><td>Pay $0.6875</td><td class="uet-num">31.3%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">🔥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 40 + ADX +15 + RSI +0 + STOCH +0 + CORR +0 + COINT +15 + BBW +0 + ADX_VERY_STRONG +5 + DI_ALIGNMENT +10 + MACD_HISTOGRAM_ALIGNED +10 + EMA_50_ALIGNED +5 + EMA_100_ALIGNED +5 + EMA_200_ALIGNED +0 + EMA_DIST -5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.1267</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I sell 22kb WTI Crude (C) in May &#x27;25 and buy 10kb per mo Conway Normal Butane (C) in Q4 &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%CL K!&#x27;)/42-(&#x27;%ISO N!-IEU&#x27;)</strong></td><td>Enhanced Trend</td><td>Sell</td><td>Rcv $0.6617</td><td>Pay $0.7235</td><td>Pay $0.5701</td><td class="uet-num">30.0%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">🔥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 40 + ADX +15 + RSI +0 + STOCH +0 + CORR +0 + COINT +15 + BBW +0 + ADX_VERY_STRONG +5 + DI_ALIGNMENT +10 + MACD_HISTOGRAM_ALIGNED +10 + EMA_50_ALIGNED +5 + EMA_100_ALIGNED +5 + EMA_200_ALIGNED +0 + EMA_DIST -5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.1103</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I sell 10kb WTI Crude (C) in May &#x27;25 and buy 16kb MB NTET Iso Butane (NTET) in Jul &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%CL K!&#x27;)/42-(((&#x27;%ISO V!-IEU&#x27;)+(&#x27;%ISO X!-IEU&#x27;)+(&#x27;%ISO Z!-IEU&#x27;))/3)</strong></td><td>Enhanced Trend</td><td>Sell</td><td>Rcv $0.7080</td><td>Pay $0.7787</td><td>Pay $0.6033</td><td class="uet-num">28.1%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">🔥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 40 + ADX +15 + RSI +0 + STOCH +0 + CORR +0 + COINT +15 + BBW +0 + ADX_VERY_STRONG +5 + DI_ALIGNMENT +10 + MACD_HISTOGRAM_ALIGNED +10 + EMA_50_ALIGNED +5 + EMA_100_ALIGNED +5 + EMA_200_ALIGNED +0 + EMA_DIST -5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.1262</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I sell 24kb WTI Crude (C) in May &#x27;25 and buy 10kb per mo MB NTET Iso Butane (NTET) in Q4 &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%CL M!&#x27;)/42-(&#x27;%ISO N!-IEU&#x27;)</strong></td><td>Enhanced Trend</td><td>Sell</td><td>Rcv $0.6514</td><td>Pay $0.7183</td><td>Pay $0.5523</td><td class="uet-num">27.3%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">🔥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 40 + ADX +15 + RSI +0 + STOCH +0 + CORR +0 + COINT +15 + BBW +0 + ADX_VERY_STRONG +5 + DI_ALIGNMENT +10 + MACD_HISTOGRAM_ALIGNED +10 + EMA_50_ALIGNED +5 + EMA_100_ALIGNED +5 + EMA_200_ALIGNED +0 + EMA_DIST -5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.1195</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I sell 10kb WTI Crude (C) in Jun &#x27;25 and buy 16kb MB NTET Iso Butane (NTET) in Jul &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%CL K!&#x27;)/42-(((&#x27;%ISO N!-IEU&#x27;)+(&#x27;%ISO Q!-IEU&#x27;)+(&#x27;%ISO U!-IEU&#x27;))/3)</strong></td><td>Enhanced Trend</td><td>Sell</td><td>Rcv $0.6994</td><td>Pay $0.7834</td><td>Pay $0.5749</td><td class="uet-num">23.3%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">🔥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 40 + ADX +15 + RSI +0 + STOCH +0 + CORR +0 + COINT +15 + BBW +0 + ADX_VERY_STRONG +5 + DI_ALIGNMENT +10 + MACD_HISTOGRAM_ALIGNED +10 + EMA_50_ALIGNED +5 + EMA_100_ALIGNED +5 + EMA_200_ALIGNED +0 + EMA_DIST -5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.1500</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I sell 24kb WTI Crude (C) in May &#x27;25 and buy 10kb per mo MB NTET Iso Butane (NTET) in Q3 &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%HO N!&#x27;)-(&#x27;%HO Q!&#x27;)</strong></td><td>Enhanced Trend</td><td>Sell</td><td>Pay $0.0390</td><td>Pay $0.0918</td><td>Rcv $0.2329</td><td class="uet-num">100.0%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">🔥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 40 + ADX +15 + RSI +0 + STOCH +0 + CORR +0 + COINT +15 + BBW +0 + ADX_VERY_STRONG +5 + DI_ALIGNMENT +10 + MACD_HISTOGRAM_ALIGNED +10 + EMA_50_ALIGNED +5 + EMA_100_ALIGNED +5 + EMA_200_ALIGNED +0 + EMA_DIST -5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.2337</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I sell 15kb Heating Oil (NYH) in Jul &#x27;25 and buy 15kb Heating Oil (NYH) in Aug &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%HO N!&#x27;)-(&#x27;%HO U!&#x27;)</strong></td><td>Enhanced Trend</td><td>Sell</td><td>Pay $0.0563</td><td>Pay $0.0735</td><td>Rcv $0.2486</td><td class="uet-num">100.0%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">🔥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 40 + ADX +15 + RSI +0 + STOCH +0 + CORR +0 + COINT +15 + BBW +0 + ADX_VERY_STRONG +5 + DI_ALIGNMENT +10 + MACD_HISTOGRAM_ALIGNED +10 + EMA_50_ALIGNED +5 + EMA_100_ALIGNED +5 + EMA_200_ALIGNED +0 + EMA_DIST -5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.2317</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I sell 15kb Heating Oil (NYH) in Jul &#x27;25 and buy 15kb Heating Oil (NYH) in Sep &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%IBC J!-IEU&#x27;)-(&#x27;%ISO U!-IEU&#x27;)</strong></td><td>Enhanced Trend</td><td>Sell</td><td>Pay $0.2313</td><td>Rcv $0.1953</td><td>Rcv $0.2846</td><td class="uet-num">100.0%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">🔥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 40 + ADX +15 + RSI +0 + STOCH +0 + CORR +0 + COINT +15 + BBW +0 + ADX_VERY_STRONG +5 + DI_ALIGNMENT +10 + MACD_HISTOGRAM_ALIGNED +10 + EMA_50_ALIGNED +5 + EMA_100_ALIGNED +5 + EMA_200_ALIGNED +0 + EMA_DIST -5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0643</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I sell 15kb Conway Normal Butane (C) in Apr &#x27;25 and buy 13kb MB NTET Iso Butane (NTET) in Sep &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%IBC K!-IEU&#x27;)-(&#x27;%PRC F!-IEU&#x27;)</strong></td><td>Enhanced Trend</td><td>Sell</td><td>Pay $0.0112</td><td>Pay $0.0188</td><td>Rcv $0.0557</td><td class="uet-num">100.0%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">🔥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 40 + ADX +15 + RSI +0 + STOCH +0 + CORR +0 + COINT +15 + BBW +0 + ADX_VERY_STRONG +5 + DI_ALIGNMENT +10 + MACD_HISTOGRAM_ALIGNED +10 + EMA_50_ALIGNED +5 + EMA_100_ALIGNED +5 + EMA_200_ALIGNED +0 + EMA_DIST -5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0536</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I sell 15kb Conway Normal Butane (C) in May &#x27;25 and buy 16kb Conway Propane (C) in Jan &#x27;25?</div></td></tr></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <div class='uet-card'>
+    <h2>🔄 Standard Mean Reversion Signals (20 signals)</h2>
+    
+        <div class='uet-explanation-card'>
+            <h4>Standard Mean Reversion System</h4>
+            <p><strong>Purpose:</strong> Price percentile extreme as entry point with confluence indicators</p>
+            <p><strong>Key Requirements:</strong></p>
+            <ul>
+                <li>Entry Point: Price < 25 Percentile (buy) or > 75 Percentile (sell)</li>
+                <li>Confluence Indicators: RSI, MACD, Correlation, Cointegration, Bollinger Bands</li>
+                <li>Min Points >= 75</li>
+                <li>Max Signals < 10 for each signal type</li>
+            </ul>
+        </div>
+        
+    <div class='uet-grid cols-2'>
+      <div>
+        <h3><span class='uet-banner buy'>BUY</span></h3>
+<table class="uet-table"><thead><tr style="background-color: #10b981; color: #ffffff;"><th>ICE Symbol</th><th>Strategy_Type</th><th>Signal</th><th>Price</th><th>Stop</th><th>Target</th><th>Pos %</th><th>Score</th><th>Alignment</th><th>PRWK</th><th>WeekDate</th></tr></thead><tbody><tr><td><strong>=(&#x27;%AFE G!-IEU&#x27;)/521-(&#x27;%AFE Q!-IEU&#x27;)/521</strong></td><td>Mean Reversion</td><td>Buy</td><td>Rcv $0.0199</td><td>Pay $0.0488</td><td>Rcv $0.0228</td><td class="uet-num">100.0%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #10b981; font-weight: bold; font-size: 14px;">✓</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + RSI +15 + CORR +0 + COINT +20 + MACD +10 + BBW +0 + PRWK +5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0515</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 13kb Far East Propane (EAST) in Feb &#x27;25 and sell 13kb Far East Propane (EAST) in Aug &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%AFE M!-IEU&#x27;)/521-(&#x27;%AFE N!-IEU&#x27;)/521</strong></td><td>Mean Reversion</td><td>Buy</td><td>Rcv $0.1653</td><td>Pay $0.1985</td><td>Pay $0.1160</td><td class="uet-num">100.0%</td><td class="uet-num">95.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + RSI +15 + CORR +0 + COINT +20 + MACD +0 + BBW +10 + = Final 95.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0593</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 13kb Far East Propane (EAST) in Jun &#x27;25 and sell 13kb Far East Propane (EAST) in Jul &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%AFE M!-IEU&#x27;)/521-(&#x27;%IBC U!-IEU&#x27;)</strong></td><td>Mean Reversion</td><td>Buy</td><td>Pay $0.1021</td><td>Rcv $0.0673</td><td>Rcv $0.1535</td><td class="uet-num">10.0%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #10b981; font-weight: bold; font-size: 14px;">✓</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + RSI +15 + CORR +0 + COINT +20 + MACD +0 + BBW +10 + PRWK +5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0620</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 13kb Far East Propane (EAST) in Jun &#x27;25 and sell 15kb Conway Normal Butane (C) in Sep &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%AFE M!-IEU&#x27;)/521-(&#x27;%ISO G!-IEU&#x27;)</strong></td><td>Mean Reversion</td><td>Buy</td><td>Pay $0.0021</td><td>Pay $0.0334</td><td>Rcv $0.0546</td><td class="uet-num">10.0%</td><td class="uet-num">95.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + RSI +15 + CORR +0 + COINT +20 + MACD +0 + BBW +10 + = Final 95.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0634</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 13kb Far East Propane (EAST) in Jun &#x27;25 and sell 13kb MB NTET Iso Butane (NTET) in Feb &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%AFE M!-IEU&#x27;)/521-(&#x27;%ISO Z!-IEU&#x27;)</strong></td><td>Mean Reversion</td><td>Buy</td><td>Rcv $0.0242</td><td>Pay $0.0612</td><td>Rcv $0.0307</td><td class="uet-num">100.0%</td><td class="uet-num">95.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + RSI +15 + CORR +0 + COINT +20 + MACD +0 + BBW +10 + = Final 95.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0661</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 13kb Far East Propane (EAST) in Jun &#x27;25 and sell 13kb MB NTET Iso Butane (NTET) in Dec &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%AFE M!-IEU&#x27;)/521-(((&#x27;%ISO F!-IEU&#x27;)+(&#x27;%ISO G!-IEU&#x27;)+(&#x27;%ISO H!-IEU&#x27;))/3)</strong></td><td>Mean Reversion</td><td>Buy</td><td>Pay $0.0175</td><td>Pay $0.0587</td><td>Rcv $0.1304</td><td class="uet-num">10.0%</td><td class="uet-num">95.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + RSI +15 + CORR +0 + COINT +20 + MACD +0 + BBW +10 + = Final 95.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.1360</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 26kb Far East Propane (EAST) in Jun &#x27;25 and sell 10kb per mo MB NTET Iso Butane (NTET) in Q1 &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%AFE X!-IEU&#x27;)/521-(&#x27;%CL Q!&#x27;)/42</strong></td><td>Mean Reversion</td><td>Buy</td><td>Rcv $0.7163</td><td>Pay $0.7795</td><td>Pay $0.6226</td><td class="uet-num">100.0%</td><td class="uet-num">95.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + RSI +15 + CORR +0 + COINT +20 + MACD +10 + BBW +0 + = Final 95.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.1129</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 13kb Far East Propane (EAST) in Nov &#x27;25 and sell 10kb WTI Crude (C) in Aug &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%CL F!&#x27;)/42-(&#x27;%CL X!&#x27;)/42</strong></td><td>Mean Reversion</td><td>Buy</td><td>Rcv $0.0314</td><td>Pay $0.1159</td><td>Rcv $0.0937</td><td class="uet-num">100.0%</td><td class="uet-num">95.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + RSI +15 + CORR +0 + COINT +20 + MACD +10 + BBW +0 + = Final 95.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.1508</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 15kb WTI Crude (C) in Jan &#x27;25 and sell 15kb WTI Crude (C) in Nov &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%CL F!&#x27;)/42-(((&#x27;%CL V!&#x27;)+(&#x27;%CL X!&#x27;)+(&#x27;%CL Z!&#x27;))/3)/42</strong></td><td>Mean Reversion</td><td>Buy</td><td>Rcv $0.0327</td><td>Pay $0.1366</td><td>Rcv $0.1213</td><td class="uet-num">100.0%</td><td class="uet-num">95.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + RSI +15 + CORR +0 + COINT +20 + MACD +10 + BBW +0 + = Final 95.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.1855</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 45kb WTI Crude (C) in Jan &#x27;25 and sell 15kb per mo WTI Crude in Q4 &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%CL G!&#x27;)/42-(&#x27;%CL Q!&#x27;)/42</strong></td><td>Mean Reversion</td><td>Buy</td><td>Rcv $0.1193</td><td>Pay $0.2073</td><td>Rcv $0.0111</td><td class="uet-num">100.0%</td><td class="uet-num">95.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + RSI +15 + CORR +0 + COINT +20 + MACD +10 + BBW +0 + = Final 95.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.1571</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 15kb WTI Crude (C) in Feb &#x27;25 and sell 15kb WTI Crude (C) in Aug &#x27;25?</div></td></tr></tbody></table>
+      </div>
+      <div>
+        <h3><span class='uet-banner sell'>SELL</span></h3>
+<table class="uet-table"><thead><tr style="background-color: #ef4444; color: #ffffff;"><th>ICE Symbol</th><th>Strategy_Type</th><th>Signal</th><th>Price</th><th>Stop</th><th>Target</th><th>Pos %</th><th>Score</th><th>Alignment</th><th>PRWK</th><th>WeekDate</th></tr></thead><tbody><tr><td><strong>=(&#x27;%CL Q!&#x27;)/42-(&#x27;%CL X!&#x27;)/42</strong></td><td>Mean Reversion</td><td>Sell</td><td>Rcv $0.0740</td><td>Pay $0.1652</td><td>Rcv $0.0610</td><td class="uet-num">10.0%</td><td class="uet-num">110.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #10b981; font-weight: bold; font-size: 14px;">✓</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + RSI +15 + CORR +0 + COINT +20 + MACD +10 + BBW +10 + PRWK +5 + = Final 110.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.1627</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I sell 10kb WTI Crude (C) in Aug &#x27;25 and buy 10kb WTI Crude (C) in Nov &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%CL Q!&#x27;)/42-(((&#x27;%CL V!&#x27;)+(&#x27;%CL X!&#x27;)+(&#x27;%CL Z!&#x27;))/3)/42</strong></td><td>Mean Reversion</td><td>Sell</td><td>Rcv $0.0728</td><td>Pay $0.1832</td><td>Rcv $0.0909</td><td class="uet-num">10.0%</td><td class="uet-num">105.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + RSI +15 + CORR +0 + COINT +20 + MACD +10 + BBW +10 + = Final 105.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.1972</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I sell 30kb WTI Crude (C) in Aug &#x27;25 and buy 10kb per mo WTI Crude in Q4 &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%NBI N!-IEU&#x27;)-(&#x27;%NBI Q!-IEU&#x27;)</strong></td><td>Mean Reversion</td><td>Sell</td><td>Pay $0.0007</td><td>Pay $0.0313</td><td>Rcv $0.0482</td><td class="uet-num">100.0%</td><td class="uet-num">105.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + RSI +15 + CORR +0 + COINT +20 + MACD +10 + BBW +10 + = Final 105.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0572</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I sell 15kb MB NTET Normal Butane (NTET) in Jul &#x27;25 and buy 15kb MB NTET Normal Butane (NTET) in Aug &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%AFE N!-IEU&#x27;)/521-(&#x27;%ISO M!-IEU&#x27;)</strong></td><td>Mean Reversion</td><td>Sell</td><td>Rcv $0.2948</td><td>Pay $0.3375</td><td>Pay $0.2316</td><td class="uet-num">19.4%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #10b981; font-weight: bold; font-size: 14px;">✓</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + RSI +15 + CORR +0 + COINT +20 + MACD +0 + BBW +10 + PRWK +5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0761</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I sell 13kb Far East Propane (EAST) in Jul &#x27;25 and buy 14kb MB NTET Iso Butane (NTET) in Jun &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%AFE Q!-IEU&#x27;)/521-(&#x27;%AFE U!-IEU&#x27;)/521</strong></td><td>Mean Reversion</td><td>Sell</td><td>Pay $0.0013</td><td>Pay $0.0282</td><td>Rcv $0.0450</td><td class="uet-num">100.0%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #10b981; font-weight: bold; font-size: 14px;">✓</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + RSI +15 + CORR +0 + COINT +20 + MACD +10 + BBW +0 + PRWK +5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0526</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I sell 13kb Far East Propane (EAST) in Aug &#x27;25 and buy 13kb Far East Propane (EAST) in Sep &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%AFE Q!-IEU&#x27;)/521-(&#x27;%ISO M!-IEU&#x27;)</strong></td><td>Mean Reversion</td><td>Sell</td><td>Rcv $0.2795</td><td>Pay $0.3220</td><td>Pay $0.2164</td><td class="uet-num">18.4%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #10b981; font-weight: bold; font-size: 14px;">✓</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + RSI +15 + CORR +0 + COINT +20 + MACD +0 + BBW +10 + PRWK +5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0759</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I sell 13kb Far East Propane (EAST) in Aug &#x27;25 and buy 14kb MB NTET Iso Butane (NTET) in Jun &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%CL Q!&#x27;)/42-(&#x27;%CL U!&#x27;)/42</strong></td><td>Mean Reversion</td><td>Sell</td><td>Rcv $0.0283</td><td>Pay $0.1222</td><td>Rcv $0.1108</td><td class="uet-num">10.0%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #10b981; font-weight: bold; font-size: 14px;">✓</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + RSI +15 + CORR +0 + COINT +20 + MACD +0 + BBW +10 + PRWK +5 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.1676</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I sell 10kb WTI Crude (C) in Aug &#x27;25 and buy 10kb WTI Crude (C) in Sep &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%CL Q!&#x27;)/42-(&#x27;%CL Z!&#x27;)/42</strong></td><td>Mean Reversion</td><td>Sell</td><td>Rcv $0.0907</td><td>Pay $0.1821</td><td>Rcv $0.0447</td><td class="uet-num">10.0%</td><td class="uet-num">95.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + RSI +15 + CORR +0 + COINT +20 + MACD +10 + BBW +0 + = Final 95.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.1632</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I sell 10kb WTI Crude (C) in Aug &#x27;25 and buy 10kb WTI Crude (C) in Dec &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%CL Q!&#x27;)/42-(&#x27;%HO F!&#x27;)</strong></td><td>Mean Reversion</td><td>Sell</td><td>Pay $0.5788</td><td>Rcv $0.4733</td><td>Rcv $0.7353</td><td class="uet-num">100.0%</td><td class="uet-num">95.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + RSI +15 + CORR +0 + COINT +20 + MACD +10 + BBW +0 + = Final 95.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.1885</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I sell 15kb WTI Crude (C) in Aug &#x27;25 and buy 10kb Heating Oil (NYH) in Jan &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%CL Q!&#x27;)/42-(&#x27;%HO G!&#x27;)</strong></td><td>Mean Reversion</td><td>Sell</td><td>Pay $0.5750</td><td>Rcv $0.4692</td><td>Rcv $0.7318</td><td class="uet-num">100.0%</td><td class="uet-num">95.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + RSI +15 + CORR +0 + COINT +20 + MACD +10 + BBW +0 + = Final 95.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.1889</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I sell 15kb WTI Crude (C) in Aug &#x27;25 and buy 10kb Heating Oil (NYH) in Feb &#x27;25?</div></td></tr></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <div class='uet-card'>
+    <h2>⚡ MACD/RSI Exhaustion Signals (10 signals)</h2>
+    
+        <div class='uet-explanation-card'>
+            <h4>MACD/RSI Exhaustion Signals</h4>
+            <p><strong>Purpose:</strong> Mean reversion system: Buy when MACD or RSI exhausted to downside, Sell when exhausted to upside</p>
+            <p><strong>Key Requirements:</strong></p>
+            <ul>
+                <li>Entry Point: MACD or RSI exhausted to extremes (MACD < 20th percentile + zero line/crossover for buy, RSI < 20th percentile OR < 30 + momentum up for buy, vice versa for sell)</li>
+                <li>Confluence Indicators: ADX, Bollinger Bands, Correlation, Cointegration, Stoch, CCI</li>
+                <li>Min Points >= 75</li>
+                <li>Max Signals < 10 for each signal type</li>
+            </ul>
+        </div>
+        
+    <div class='uet-grid cols-2'>
+      <div>
+        <h3><span class='uet-banner buy'>BUY</span></h3>
+<table class="uet-table"><thead><tr style="background-color: #10b981; color: #ffffff;"><th>ICE Symbol</th><th>Strategy_Type</th><th>Signal</th><th>Price</th><th>Stop</th><th>Target</th><th>Pos %</th><th>Score</th><th>Alignment</th><th>PRWK</th><th>WeekDate</th></tr></thead><tbody><tr><td><strong>=(&#x27;%ISO M!-IEU&#x27;)-(&#x27;%ISO N!-IEU&#x27;)</strong></td><td>MACD+RSI Exhaustion</td><td>Buy</td><td>Rcv $0.1984</td><td>Pay $0.2448</td><td>Pay $0.1298</td><td class="uet-num">100.0%</td><td class="uet-num">110.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + ADX +15 + STOCH +10 + CCI +10 + CORR +0 + COINT +15 + BBW +10 + BOTH_INDICATORS_EXHAUSTED +0 + = Final 110.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0828</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 15kb MB NTET Iso Butane (NTET) in Jun &#x27;25 and sell 15kb MB NTET Iso Butane (NTET) in Jul &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%AFE J!-IEU&#x27;)/521-(&#x27;%ISO Q!-IEU&#x27;)</strong></td><td>MACD+RSI Exhaustion</td><td>Buy</td><td>Pay $0.0223</td><td>Pay $0.0127</td><td>Rcv $0.0742</td><td class="uet-num">10.0%</td><td class="uet-num">105.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #10b981; font-weight: bold; font-size: 14px;">✓</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + ADX +15 + STOCH +10 + CCI +10 + CORR +0 + COINT +15 + BBW +0 + BOTH_INDICATORS_EXHAUSTED +0 + PRWK +5 + = Final 105.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0626</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 13kb Far East Propane (EAST) in Apr &#x27;25 and sell 14kb MB NTET Iso Butane (NTET) in Aug &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%AFE J!-IEU&#x27;)/521-(&#x27;%ISO U!-IEU&#x27;)</strong></td><td>MACD+RSI Exhaustion</td><td>Buy</td><td>Pay $0.0285</td><td>Pay $0.0050</td><td>Rcv $0.0782</td><td class="uet-num">10.0%</td><td class="uet-num">105.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #10b981; font-weight: bold; font-size: 14px;">✓</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + ADX +15 + STOCH +10 + CCI +10 + CORR +0 + COINT +15 + BBW +0 + BOTH_INDICATORS_EXHAUSTED +0 + PRWK +5 + = Final 105.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0598</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 13kb Far East Propane (EAST) in Apr &#x27;25 and sell 14kb MB NTET Iso Butane (NTET) in Sep &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%AFE J!-IEU&#x27;)/521-(((&#x27;%ISO N!-IEU&#x27;)+(&#x27;%ISO Q!-IEU&#x27;)+(&#x27;%ISO U!-IEU&#x27;))/3)</strong></td><td>MACD+RSI Exhaustion</td><td>Buy</td><td>Pay $0.0066</td><td>Pay $0.0510</td><td>Rcv $0.0918</td><td class="uet-num">10.0%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + ADX +15 + STOCH +10 + CCI +10 + CORR +0 + COINT +15 + BBW +0 + BOTH_INDICATORS_EXHAUSTED +0 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.1028</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 26kb Far East Propane (EAST) in Apr &#x27;25 and sell 10kb per mo MB NTET Iso Butane (NTET) in Q3 &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%AFE J!-IEU&#x27;)/521-(((&#x27;%ISO V!-IEU&#x27;)+(&#x27;%ISO X!-IEU&#x27;)+(&#x27;%ISO Z!-IEU&#x27;))/3)</strong></td><td>MACD+RSI Exhaustion</td><td>Buy</td><td>Pay $0.0152</td><td>Pay $0.0292</td><td>Rcv $0.0811</td><td class="uet-num">10.0%</td><td class="uet-num">105.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #10b981; font-weight: bold; font-size: 14px;">✓</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + ADX +15 + STOCH +10 + CCI +10 + CORR +0 + COINT +15 + BBW +0 + BOTH_INDICATORS_EXHAUSTED +0 + PRWK +5 + = Final 105.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.0794</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 26kb Far East Propane (EAST) in Apr &#x27;25 and sell 10kb per mo MB NTET Iso Butane (NTET) in Q4 &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%CL K!&#x27;)/42-(&#x27;%NBI V!-IEU&#x27;)</strong></td><td>MACD+RSI Exhaustion</td><td>Buy</td><td>Pay $0.8039</td><td>Rcv $0.7466</td><td>Rcv $0.8887</td><td class="uet-num">39.3%</td><td class="uet-num">105.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #10b981; font-weight: bold; font-size: 14px;">✓</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + ADX +15 + STOCH +10 + CCI +10 + CORR +0 + COINT +15 + BBW +0 + BOTH_INDICATORS_EXHAUSTED +0 + PRWK +5 + = Final 105.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.1022</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 10kb WTI Crude (C) in May &#x27;25 and sell 17kb MB NTET Normal Butane (NTET) in Oct &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%CL K!&#x27;)/42-(&#x27;%ISO V!-IEU&#x27;)</strong></td><td>MACD+RSI Exhaustion</td><td>Buy</td><td>Pay $0.7139</td><td>Rcv $0.6550</td><td>Rcv $0.8012</td><td class="uet-num">33.9%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + ADX +15 + STOCH +10 + CCI +10 + CORR +0 + COINT +15 + BBW +0 + BOTH_INDICATORS_EXHAUSTED +0 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.1052</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 10kb WTI Crude (C) in May &#x27;25 and sell 16kb MB NTET Iso Butane (NTET) in Oct &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%CL K!&#x27;)/42-(((&#x27;%ISO F!-IEU&#x27;)+(&#x27;%ISO G!-IEU&#x27;)+(&#x27;%ISO H!-IEU&#x27;))/3)</strong></td><td>MACD+RSI Exhaustion</td><td>Buy</td><td>Pay $0.7480</td><td>Rcv $0.6466</td><td>Rcv $0.8984</td><td class="uet-num">20.6%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + ADX +15 + STOCH +10 + CCI +10 + CORR +0 + COINT +15 + BBW +0 + BOTH_INDICATORS_EXHAUSTED +0 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.1812</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 23kb WTI Crude (C) in May &#x27;25 and sell 10kb per mo MB NTET Iso Butane (NTET) in Q1 &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%CL K!&#x27;)/42-(((&#x27;%ISO V!-IEU&#x27;)+(&#x27;%ISO X!-IEU&#x27;)+(&#x27;%ISO Z!-IEU&#x27;))/3)</strong></td><td>MACD+RSI Exhaustion</td><td>Buy</td><td>Pay $0.7080</td><td>Rcv $0.6373</td><td>Rcv $0.8128</td><td class="uet-num">28.1%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + ADX +15 + STOCH +10 + CCI +10 + CORR +0 + COINT +15 + BBW +0 + BOTH_INDICATORS_EXHAUSTED +0 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.1262</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 24kb WTI Crude (C) in May &#x27;25 and sell 10kb per mo MB NTET Iso Butane (NTET) in Q4 &#x27;25?</div></td></tr><tr><td><strong>=(&#x27;%CL M!&#x27;)/42-(&#x27;%NBI X!-IEU&#x27;)</strong></td><td>MACD+RSI Exhaustion</td><td>Buy</td><td>Pay $0.7874</td><td>Rcv $0.7257</td><td>Rcv $0.8788</td><td class="uet-num">35.7%</td><td class="uet-num">100.0</td><td class="uet-center"><span class="uet-alignment-icon">💥</span></td><td class="uet-center"><span style="color: #ef4444; font-weight: bold; font-size: 14px;">✗</span></td><td>2024-07-12</td></tr><tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: Base 50 + ADX +15 + STOCH +10 + CCI +10 + CORR +0 + COINT +15 + BBW +0 + BOTH_INDICATORS_EXHAUSTED +0 + = Final 100.0 | Risk: Stop=0.56x ATR, Target=0.83x ATR, ATR=0.1102</div></td></tr><tr class="uet-icechat"><td colspan="11"><div class="icechat-line">ICE Chat: What can I buy 10kb WTI Crude (C) in Jun &#x27;25 and sell 17kb MB NTET Normal Butane (NTET) in Nov &#x27;25?</div></td></tr></tbody></table>
+      </div>
+      <div>
+        <h3><span class='uet-banner sell'>SELL</span></h3>
+        <div class='uet-note'>No qualifying signals</div>
+      </div>
+    </div>
+  </div>
+
+        <div class="uet-card" style="padding:10px 12px;">
+            <h3 style="font-size:13px; margin:0 0 6px 0; font-weight:600;">📊 Forward Curve Summary</h3>
+            <p style="font-size:9px; color:var(--muted); margin:0 0 8px 0;">Prices in $/usg. Yellow = referenced in signals.</p>
+            <div style="overflow-x: auto; margin: 8px 0;">
+                <table class="uet-table" style="font-size: 0.65em; table-layout:auto;">
+                    <thead>
+                        <tr>
+                            <th style="font-size:9px; padding:4px 6px;">Commodity</th>
+<th style="font-size:9px; padding:4px 6px; text-align:center;">Dec 25</th><th style="font-size:9px; padding:4px 6px; text-align:center;">Jan 26</th><th style="font-size:9px; padding:4px 6px; text-align:center;">Feb 26</th><th style="font-size:9px; padding:4px 6px; text-align:center;">Mar 26</th><th style="font-size:9px; padding:4px 6px; text-align:center;">Apr 26</th><th style="font-size:9px; padding:4px 6px; text-align:center;">May 26</th><th style="font-size:9px; padding:4px 6px; text-align:center;">Jun 26</th><th style="font-size:9px; padding:4px 6px; text-align:center;">Jul 26</th><th style="font-size:9px; padding:4px 6px; text-align:center;">Aug 26</th><th style="font-size:9px; padding:4px 6px; text-align:center;">Sep 26</th><th style="font-size:9px; padding:4px 6px; text-align:center;">Oct 26</th><th style="font-size:9px; padding:4px 6px; text-align:center;">Nov 26</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+<tr><td style="font-weight: bold; font-size:9px; padding:3px 6px;">Far East Butane</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.24694</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.20126</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.12856</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.10579</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.06017</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.04724</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.04044</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.05288</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.05963</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.06883</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.10461</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.11486</td></tr><tr><td style="font-weight: bold; font-size:9px; padding:3px 6px;">AFE Propane (FEI)</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.03000</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$1.00003</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.98176</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.96215</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.94203</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.93078</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.92497</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.92564</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.93105</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.93861</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.94988</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.95840</td></tr><tr><td style="font-weight: bold; font-size:9px; padding:3px 6px;">WTI Crude Oil</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:center;">-</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$1.42024</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$1.41214</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.40643</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.40333</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$1.39054</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$1.40167</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.39031</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$1.39054</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$1.40769</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$1.40244</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$1.38450</td></tr><tr><td style="font-weight: bold; font-size:9px; padding:3px 6px;">Heating Oil</td><td style=" font-size:9px; padding:3px 6px; text-align:center;">-</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$2.32220</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$2.29700</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$2.26210</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$2.21730</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$2.22048</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$2.17130</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$2.17711</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$2.19755</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$2.17632</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$2.17000</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$2.16820</td></tr><tr><td style="font-weight: bold; font-size:9px; padding:3px 6px;">Normal Butane (Conway)</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.89850</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.91540</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.90450</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.83860</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.76270</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.75270</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.75300</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.76290</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.77780</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.80540</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.82780</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.84270</td></tr><tr><td style="font-weight: bold; font-size:9px; padding:3px 6px;">Isobutane (Conway)</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.96940</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.97610</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.97910</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.94470</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.92070</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.90680</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.89450</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.88420</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.89030</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.89130</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.90490</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.90210</td></tr><tr><td style="font-weight: bold; font-size:9px; padding:3px 6px;">Isobutane (MB Non-TET)</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.92620</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.93690</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.92100</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.90930</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.89030</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.87650</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.87420</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.87160</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.87630</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.88370</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.89090</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.87690</td></tr><tr><td style="font-weight: bold; font-size:9px; padding:3px 6px;">Normal Butane (MB Non-TET)</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.88990</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.91420</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.88680</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.84250</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.80820</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.79440</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.79090</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.79070</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.79550</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.80680</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.81770</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.82510</td></tr><tr><td style="font-weight: bold; font-size:9px; padding:3px 6px;">LST Normal Butane (MB LST)</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.87240</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.89510</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.86790</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.82350</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.78930</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.77540</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.77320</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.77310</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.77910</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.79030</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.80390</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.81120</td></tr><tr><td style="font-weight: bold; font-size:9px; padding:3px 6px;">Natural Gas (HH)</td><td style=" font-size:9px; padding:3px 6px; text-align:center;">-</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$5.09300</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$4.72500</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$4.13300</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$3.96000</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$3.96700</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$4.09700</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$4.26800</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$4.30000</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$4.26000</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$4.30400</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$4.26035</td></tr><tr><td style="font-weight: bold; font-size:9px; padding:3px 6px;">Natural Gasoline (Conway)</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.22940</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.23400</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.22420</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.21380</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.20220</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.19220</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.18130</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.17100</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.17060</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.17040</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.16990</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.16960</td></tr><tr><td style="font-weight: bold; font-size:9px; padding:3px 6px;">Natural Gasoline (MB Non-TET)</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.26420</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.24540</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.23300</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.22260</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.21230</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.20230</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.19390</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.18740</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.18320</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.18300</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.18120</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.17960</td></tr><tr><td style="font-weight: bold; font-size:9px; padding:3px 6px;">Propane (Conway)</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.66580</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.68520</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.68850</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.66310</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.64030</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.63280</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.63170</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.63160</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.63270</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.64260</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.66630</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.68630</td></tr><tr><td style="font-weight: bold; font-size:9px; padding:3px 6px;">Propane (MB LST)</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.71260</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.71050</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.69980</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.68080</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.65920</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.64790</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.64560</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.64550</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.64650</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.65530</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.66510</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.67250</td></tr><tr><td style="font-weight: bold; font-size:9px; padding:3px 6px;">Propane (MB Non-TET)</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.69580</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.68960</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.69440</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.68180</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.66150</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.65020</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.64800</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.64630</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.64700</td><td style="background-color: #fff9c4; font-size:9px; padding:3px 6px; text-align:right;">$0.65670</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.66620</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$0.67330</td></tr><tr><td style="font-weight: bold; font-size:9px; padding:3px 6px;">RBOB Gasoline</td><td style=" font-size:9px; padding:3px 6px; text-align:center;">-</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.82950</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.83120</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.85190</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$2.05590</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$2.04906</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$2.04490</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$2.02782</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$2.03715</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.98413</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$2.03073</td><td style=" font-size:9px; padding:3px 6px; text-align:right;">$1.99940</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="uet-card">
+            <h2>📋 ICE Connect Copy-Paste Summary</h2>
+            <p>Copy the text below and paste directly into ICE Connect (high-conviction signals ≥75 points only):</p>
+            <div style="background-color: #f5f5f5; padding: 15px; border-radius: 4px; white-space: pre-wrap; font-family: monospace; font-size: 0.8em; overflow-x: auto;">
+
+##"Enhanced Trend Following Signals"
+##BUY
+=('%IBC N!-IEU')-('%PRL K!-IEU')
+=('%IBC N!-IEU')-('%PRN K!-IEU')
+=('%IBC N!-IEU')-('%PRN M!-IEU')
+=('%IBC N!-IEU')-((('%PRL J!-IEU')+('%PRL K!-IEU')+('%PRL M!-IEU'))/3)
+=('%IBC Q!-IEU')-('%NBI M!-IEU')
+=('%ISO N!-IEU')-('%NBI J!-IEU')
+=('%ISO N!-IEU')-('%NBI K!-IEU')
+=('%ISO N!-IEU')-('%NBI M!-IEU')
+=('%ISO N!-IEU')-('%PRC M!-IEU')
+=('%ISO N!-IEU')-('%PRN M!-IEU')
+##SELL
+=('%AFE J!-IEU')/521-((('%ISO V!-IEU')+('%ISO X!-IEU')+('%ISO Z!-IEU'))/3)
+=('%CL K!')/42-((('%IBC V!-IEU')+('%IBC X!-IEU')+('%IBC Z!-IEU'))/3)
+=('%CL K!')/42-('%ISO N!-IEU')
+=('%CL K!')/42-((('%ISO V!-IEU')+('%ISO X!-IEU')+('%ISO Z!-IEU'))/3)
+=('%CL M!')/42-('%ISO N!-IEU')
+=('%CL K!')/42-((('%ISO N!-IEU')+('%ISO Q!-IEU')+('%ISO U!-IEU'))/3)
+=('%HO N!')-('%HO Q!')
+=('%HO N!')-('%HO U!')
+=('%IBC J!-IEU')-('%ISO U!-IEU')
+=('%IBC K!-IEU')-('%PRC F!-IEU')
+
+##"Standard Mean Reversion Signals"
+##BUY
+=('%AFE G!-IEU')/521-('%AFE Q!-IEU')/521
+=('%AFE M!-IEU')/521-('%AFE N!-IEU')/521
+=('%AFE M!-IEU')/521-('%IBC U!-IEU')
+=('%AFE M!-IEU')/521-('%ISO G!-IEU')
+=('%AFE M!-IEU')/521-('%ISO Z!-IEU')
+=('%AFE M!-IEU')/521-((('%ISO F!-IEU')+('%ISO G!-IEU')+('%ISO H!-IEU'))/3)
+=('%AFE X!-IEU')/521-('%CL Q!')/42
+=('%CL F!')/42-('%CL X!')/42
+=('%CL F!')/42-((('%CL V!')+('%CL X!')+('%CL Z!'))/3)/42
+=('%CL G!')/42-('%CL Q!')/42
+##SELL
+=('%CL Q!')/42-('%CL X!')/42
+=('%CL Q!')/42-((('%CL V!')+('%CL X!')+('%CL Z!'))/3)/42
+=('%NBI N!-IEU')-('%NBI Q!-IEU')
+=('%AFE N!-IEU')/521-('%ISO M!-IEU')
+=('%AFE Q!-IEU')/521-('%AFE U!-IEU')/521
+=('%AFE Q!-IEU')/521-('%ISO M!-IEU')
+=('%CL Q!')/42-('%CL U!')/42
+=('%CL Q!')/42-('%CL Z!')/42
+=('%CL Q!')/42-('%HO F!')
+=('%CL Q!')/42-('%HO G!')
+
+##"MACD/RSI Exhaustion Signals"
+##BUY
+=('%ISO M!-IEU')-('%ISO N!-IEU')
+=('%AFE J!-IEU')/521-('%ISO Q!-IEU')
+=('%AFE J!-IEU')/521-('%ISO U!-IEU')
+=('%AFE J!-IEU')/521-((('%ISO N!-IEU')+('%ISO Q!-IEU')+('%ISO U!-IEU'))/3)
+=('%AFE J!-IEU')/521-((('%ISO V!-IEU')+('%ISO X!-IEU')+('%ISO Z!-IEU'))/3)
+=('%CL K!')/42-('%NBI V!-IEU')
+=('%CL K!')/42-('%ISO V!-IEU')
+=('%CL K!')/42-((('%ISO F!-IEU')+('%ISO G!-IEU')+('%ISO H!-IEU'))/3)
+=('%CL K!')/42-((('%ISO V!-IEU')+('%ISO X!-IEU')+('%ISO Z!-IEU'))/3)
+=('%CL M!')/42-('%NBI X!-IEU')
+##SELL
+-
+
+            </div>
+        </div>
+
+</div>
+</body>
+</html>

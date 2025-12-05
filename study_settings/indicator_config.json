@@ -1,0 +1,138 @@
+{
+  "data_settings": {
+    "years_back": 5,
+    "min_weeks_for_indicators": 200,
+    "comment": "Always pull 5 years of history (approximately 260 weeks) for indicator calculations"
+  },
+  "moving_averages": {
+    "ema_periods": [10, 20, 50, 100, 200],
+    "comment": "Exponential Moving Average periods"
+  },
+  "trend_indicators": {
+    "adx": {
+      "period": 14,
+      "comment": "Average Directional Index period"
+    },
+    "supertrend": {
+      "atr_period": 10,
+      "multiplier": 3.0,
+      "comment": "SuperTrend uses ATR-based calculation"
+    },
+    "parabolic_sar": {
+      "step": 0.02,
+      "max_step": 0.2,
+      "comment": "Parabolic SAR acceleration parameters"
+    }
+  },
+  "momentum_indicators": {
+    "macd": {
+      "fast": 12,
+      "slow": 26,
+      "signal": 9,
+      "comment": "MACD: fast EMA, slow EMA, signal line EMA"
+    },
+    "rsi": {
+      "period": 14,
+      "overbought": 70,
+      "oversold": 30,
+      "comment": "Relative Strength Index thresholds"
+    },
+    "stochastic": {
+      "k_period": 14,
+      "d_period": 3,
+      "smooth_k": 3,
+      "overbought": 80,
+      "oversold": 20,
+      "comment": "Stochastic Oscillator parameters"
+    },
+    "roc": {
+      "periods": [1, 5, 10, 20, 50],
+      "comment": "Rate of Change periods (in weeks)"
+    }
+  },
+  "oscillators": {
+    "cci": {
+      "period": 20,
+      "overbought": 100,
+      "oversold": -100,
+      "comment": "Commodity Channel Index thresholds"
+    },
+    "williams_r": {
+      "period": 14,
+      "overbought": -20,
+      "oversold": -80,
+      "comment": "Williams %R thresholds (inverted scale)"
+    }
+  },
+  "aroon": {
+    "period": 14,
+    "strong_uptrend_threshold": 70,
+    "strong_downtrend_threshold": 70,
+    "comment": "Aroon indicator thresholds for trend strength"
+  },
+  "volatility": {
+    "bollinger_bands": {
+      "period": 14,
+      "std_dev": 2.0,
+      "comment": "Bollinger Bands: period and standard deviations (matching ICE Connect settings)"
+    },
+    "atr": {
+      "period": 14,
+      "comment": "Average True Range period"
+    },
+    "historical_volatility": {
+      "period": 20,
+      "comment": "Historical volatility rolling window (weeks)"
+    }
+  },
+  "statistical": {
+    "zscore": {
+      "period": 52,
+      "comment": "Z-score rolling window (weeks)"
+    },
+    "coefficient_of_variation": {
+      "period": 52,
+      "comment": "Coefficient of Variation rolling window (weeks)"
+    },
+    "percentiles": {
+      "lookback_years": 5,
+      "lookback_weeks": 260,
+      "indicators": ["close", "rsi", "macd_line", "macd_signal", "macd_histogram"],
+      "comment": "Percentile calculations use 5-year rolling lookback"
+    }
+  },
+  "markov_model": {
+    "state_classification": {
+      "adx_strong_threshold": 25,
+      "rsi_overbought": 70,
+      "rsi_oversold": 30,
+      "ema_short": 50,
+      "ema_medium": 100,
+      "ema_long": 200,
+      "comment": "Thresholds for classifying 4-factor Markov states"
+    },
+    "transition_matrix": {
+      "lookback_weeks": 52,
+      "comment": "Rolling window for calculating transition probabilities"
+    }
+  },
+  "spread_analysis": {
+    "correlation": {
+      "lookback_weeks": 52,
+      "comment": "Rolling window for calculating correlation between spread components"
+    },
+    "cointegration": {
+      "method": "engle_granger",
+      "significance_level": 0.10,
+      "comment": "Cointegration test method and significance level for spread components. Loosened to 0.10 to capture more spreads suitable for mean reversion strategies"
+    }
+  },
+  "historical_coverage": {
+    "min_weeks": 104,
+    "max_weeks": 156,
+    "parallel_workers": 2,
+    "comment": "Maintain minimum 104 weeks (2 years), allow growth to 156 weeks (3 years), then delete older files. Use 2 workers for parallel processing. NOTE: ICE API has a maximum record limit of 2500 data points per request - we request ~104 weeks per symbol which is well under the limit"
+  }
+}
+
+

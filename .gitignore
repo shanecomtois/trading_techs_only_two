@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+assets/
+*.log
+cache/*.json
+!cache/.gitkeep
+
+# Test outputs
+aux_scripts/*.txt
+aux_scripts/*.csv
+
+# Signal generator outputs (keep only most recent)
+signal_generator/output/*.txt
+signal_generator/output/ice_connect_signals_*.txt
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+test_*.py
+
+
+
