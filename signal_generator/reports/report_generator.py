@@ -2,7 +2,7 @@
 Modern card-based HTML report generator for trade signals.
 Matches UET light theme design from reference template.
 """
-from datetime import datetime
+from datetime import datetime, date
 from pathlib import Path
 from typing import Dict, List, Optional
 from collections import Counter
@@ -12,6 +12,27 @@ import html as _html
 import re
 
 logger = logging.getLogger(__name__)
+
+# Import AI alignment modules (optional, will fail gracefully if not available)
+try:
+    # Try multiple import strategies to handle different execution contexts
+    try:
+        # Strategy 1: Relative import (when run as part of signal_generator package)
+        from ..ai import get_or_fetch_ai_alignment, build_trade_payload, determine_structure_type
+    except ImportError:
+        try:
+            # Strategy 2: Absolute import with signal_generator prefix
+            from signal_generator.ai import get_or_fetch_ai_alignment, build_trade_payload, determine_structure_type
+        except ImportError:
+            # Strategy 3: Direct import (when signal_generator is in path)
+            from ai import get_or_fetch_ai_alignment, build_trade_payload, determine_structure_type
+    AI_ALIGN_AVAILABLE = True
+except ImportError as e:
+    AI_ALIGN_AVAILABLE = False
+    logger.warning(f"AI alignment modules not available. AI alignment will be disabled. Error: {e}")
+except Exception as e:
+    AI_ALIGN_AVAILABLE = False
+    logger.warning(f"AI alignment modules not available. AI alignment will be disabled. Unexpected error: {e}")
 
 # Molecule code to display code mapping
 MOLECULE_CODE_MAP = {
@@ -41,6 +62,22 @@ class ReportGenerator:
         """
         self.config = config
         self.report_settings = config.get('report_settings', {})
+        
+        # Check if AI alignment is enabled
+        ai_align_config = config.get('ai_align', {})
+        self.ai_align_enabled = (
+            AI_ALIGN_AVAILABLE and 
+            ai_align_config.get('enabled', False)
+        )
+        if self.ai_align_enabled:
+            self.ai_align_config = ai_align_config
+            logger.info("AI alignment is ENABLED")
+        else:
+            self.ai_align_config = {}
+            if not AI_ALIGN_AVAILABLE:
+                logger.info("AI alignment is DISABLED (modules not available)")
+            else:
+                logger.info("AI alignment is DISABLED (config: enabled=false)")
         
         # Load symbol matrix for metadata lookup (optional, will try to load if available)
         self.symbol_matrix = None
@@ -473,9 +510,10 @@ table.uet-table thead th:nth-child(5){width:8%}   /* Stop */
 table.uet-table thead th:nth-child(6){width:8%}   /* Target */
 table.uet-table thead th:nth-child(7){width:6%}   /* Pos % */
 table.uet-table thead th:nth-child(8){width:6%}   /* Score */
-table.uet-table thead th:nth-child(9){width:6%}   /* Alignment */
-table.uet-table thead th:nth-child(10){width:6%}  /* PRWK */
-table.uet-table thead th:nth-child(11){width:16%} /* WeekDate */
+table.uet-table thead th:nth-child(9){width:6%}   /* PRWK (or AI Align if enabled) */
+table.uet-table thead th:nth-child(10){width:16%} /* Entry Date (or AI Conf/PRWK if AI enabled) */
+table.uet-table thead th:nth-child(11){width:6%}  /* PRWK (if AI enabled) */
+table.uet-table thead th:nth-child(12){width:16%} /* Entry Date (if AI enabled) */
 table.uet-table tbody td{
   padding:8px 10px; border-bottom:1px solid var(--border); border-right:1px solid var(--border); vertical-align:top; font-size:11px; word-wrap:break-word; overflow-wrap:break-word;
 }
@@ -485,9 +523,10 @@ table.uet-table tbody tr:last-child td{border-bottom:none}
 .uet-center{text-align:center}
 .uet-note{color:var(--muted); font-size:10px; margin-top:6px}
 /* ICE Chat + Score rows */
-tr.uet-icechat td{ background:#e0f2fe; color:#000000; padding:8px 10px; }  /* Very light blue background with black font for ICE Chat */
-tr.uet-scoredetails td{ background:#f0f9ff; color:#000000; padding:8px 10px; }  /* Lightest blue background with black font for Score details */
-.icechat-line{ font-size:10px; color:#000000; font-weight:bold; font-style:normal; padding:2px 2px 4px 2px; margin:0; }
+tr.uet-icechat td{ background:#e0f2fe; color:#000000; padding:4px 8px; }  /* Very light blue background with black font for ICE Chat */
+tr.uet-scoredetails td{ background:#f0f9ff; color:#000000; padding:4px 8px; }  /* Lightest blue background with black font for Score details */
+tr.uet-ai-analysis td{ background:#dcfce7; color:#000000; padding:4px 8px; }  /* Light green background with black font for AI Analysis */
+.icechat-line{ font-size:10px; color:#000000; font-weight:bold; font-style:normal; padding:1px 2px; margin:0; line-height:1.3; }
 
 /* Signal header row (above each signal) */
 tr.uet-signal-header th{ 
@@ -957,7 +996,7 @@ tr.uet-fallback-row td{
             'symbol_buy_sell': symbol_buy_sell
         }
     
-    def _generate_strategy_stats_html(self, stats: Dict) -> str:
+    def _generate_strategy_stats_html(self, stats: Dict, strategy_key: str = None) -> str:
         """Generate HTML for strategy statistics dashboard."""
         if not stats or stats['high_conviction_count'] == 0:
             return """
@@ -1197,16 +1236,113 @@ tr.uet-fallback-row td{
             </div>
 """
         
-        # Tile 5: Backtesting Results (placeholder)
+        # Tile 5: Backtesting Results
+        html += self._generate_backtesting_tile(strategy_key)
+        
         html += """
-            <div style='padding:8px; background:white; border-radius:6px; border:1px solid #e2e8f0;'>
-              <div style='font-size:11px; font-weight:600; color:#475569; margin-bottom:6px;'>Backtesting Results</div>
-              <div style='font-size:9px; color:#64748b; font-style:italic;'>Coming soon...</div>
-            </div>
           </div>
         </div>
 """
         return html
+    
+    def _generate_backtesting_tile(self, strategy_key: str = None) -> str:
+        """Generate HTML for backtesting results tile, filtered by strategy if provided."""
+        from pathlib import Path
+        import pandas as pd
+        
+        # Try to load backtest results
+        output_dir = Path(__file__).parent.parent.parent / 'backtesting_outputs'
+        backtest_file = output_dir / 'backtest_summary.csv'
+        
+        if not backtest_file.exists():
+            return """
+            <div style='padding:8px; background:white; border-radius:6px; border:1px solid #e2e8f0;'>
+              <div style='font-size:11px; font-weight:600; color:#475569; margin-bottom:6px;'>Backtesting Results</div>
+              <div style='font-size:9px; color:#64748b; font-style:italic;'>No results available. Run backtests to generate.</div>
+            </div>
+"""
+        
+        try:
+            df = pd.read_csv(backtest_file)
+            if len(df) == 0:
+                return """
+            <div style='padding:8px; background:white; border-radius:6px; border:1px solid #e2e8f0;'>
+              <div style='font-size:11px; font-weight:600; color:#475569; margin-bottom:6px;'>Backtesting Results</div>
+              <div style='font-size:9px; color:#64748b; font-style:italic;'>No results available.</div>
+            </div>
+"""
+            
+            # Format strategy names for display
+            def format_strategy_name(name: str) -> str:
+                name_map = {
+                    'trend_following': 'Trend',
+                    'enhanced_trend_following': 'Enhanced Trend',
+                    'mean_reversion': 'Mean Rev',
+                    'macd_rsi_exhaustion': 'MACD/RSI'
+                }
+                return name_map.get(name, name[:12])
+            
+            # Filter by strategy if provided
+            if strategy_key and 'strategy_name' in df.columns:
+                df = df[df['strategy_name'] == strategy_key]
+                if len(df) == 0:
+                    return """
+            <div style='padding:8px; background:white; border-radius:6px; border:1px solid #e2e8f0;'>
+              <div style='font-size:11px; font-weight:600; color:#475569; margin-bottom:6px;'>Backtesting Results</div>
+              <div style='font-size:9px; color:#64748b; font-style:italic;'>No results available for this strategy.</div>
+            </div>
+"""
+            
+            html = """
+            <div style='padding:8px; background:white; border-radius:6px; border:1px solid #e2e8f0;'>
+              <div style='font-size:11px; font-weight:600; color:#475569; margin-bottom:6px;'>Backtesting Results</div>
+"""
+            
+            # Show top 3 strategies by total return (or all if filtered to one strategy)
+            df_sorted = df.sort_values('total_return_pct', ascending=False)
+            
+            for idx, row in df_sorted.head(3).iterrows():
+                strategy_display = format_strategy_name(str(row['strategy_name']))
+                return_pct = row['total_return_pct']
+                win_rate = row['win_rate']
+                trades = int(row['total_trades'])
+                
+                # Color code return
+                return_color = '#059669' if return_pct >= 0 else '#dc2626'
+                
+                html += f"""
+              <div style='margin-bottom:4px; padding-bottom:4px; border-bottom:1px solid #f1f5f9;'>
+                <div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;'>
+                  <div style='font-size:8px; color:#334155; font-weight:600;'>{strategy_display}</div>
+                  <div style='font-size:8px; color:{return_color}; font-weight:600;'>{return_pct:+.1f}%</div>
+                </div>
+                <div style='font-size:7px; color:#64748b;'>WR: {win_rate:.0f}% | Trades: {trades}</div>
+              </div>
+"""
+            
+            # Show summary if more than 3 strategies (or if showing all strategies for a filtered view)
+            if len(df_sorted) > 3 and not strategy_key:
+                avg_return = df_sorted['total_return_pct'].mean()
+                total_trades = int(df_sorted['total_trades'].sum())
+                html += f"""
+              <div style='margin-top:4px; padding-top:4px; border-top:1px solid #e2e8f0; font-size:7px; color:#64748b;'>
+                Avg: {avg_return:+.1f}% | Total: {total_trades} trades
+              </div>
+"""
+            
+            html += """
+            </div>
+"""
+            return html
+            
+        except Exception as e:
+            logger.warning(f"Error loading backtest results: {e}")
+            return """
+            <div style='padding:8px; background:white; border-radius:6px; border:1px solid #e2e8f0;'>
+              <div style='font-size:11px; font-weight:600; color:#475569; margin-bottom:6px;'>Backtesting Results</div>
+              <div style='font-size:9px; color:#64748b; font-style:italic;'>Error loading results</div>
+            </div>
+"""
     
     def _generate_strategy_section(
         self,
@@ -1247,11 +1383,11 @@ tr.uet-fallback-row td{
                 <ul>
                     <li>Entry Point: {self._get_entry_description(strategy_key)}</li>
                     <li>Confluence Indicators: {self._get_confluence_list(strategy_key)}</li>
-                    <li>Min Points >= {self.config.get('min_points_threshold', 75)}</li>
-                    <li>Max Signals < {self.config.get('max_signals_per_type', 10)} for each signal type</li>
+                    <li>Min Points >= {self.config.get('min_points_threshold', 'N/A')}</li>
+                    <li>Max Signals < {self.config.get('max_signals_per_type', 'N/A')} for each signal type</li>
                 </ul>
             </div>
-            {self._generate_strategy_stats_html(stats)}
+            {self._generate_strategy_stats_html(stats, strategy_key)}
         </div>
         
     <div class='uet-grid cols-2'>
@@ -1332,11 +1468,19 @@ tr.uet-fallback-row td{
         html = '<table class="uet-table">'
         html += f'<thead><tr style="background-color: {header_bg}; color: {header_text_color};">'
         html += '<th>ICE Symbol</th><th>Strategy_Type</th><th>Signal</th>'
-        html += '<th>Price</th><th>Stop</th><th>Target</th><th>Pos %</th><th>Score</th><th>Alignment</th><th>PRWK</th><th>WeekDate</th>'
+        html += '<th>Price</th><th>Stop</th><th>Target</th><th>Pos %</th><th>Score</th>'
+        if self.ai_align_enabled:
+            html += '<th>AI Align</th><th>AI Conf</th>'
+        html += '<th>PRWK</th><th>Entry Date</th>'
         html += '</tr></thead><tbody>'
         
+        # Get data_date from ice_chat_formatter if available (for AI alignment)
+        data_date = None
+        if hasattr(ice_chat_formatter, 'data_date'):
+            data_date = ice_chat_formatter.data_date
+        
         for signal in signals:
-            html += self._generate_signal_row_with_ice_chat(signal, ice_chat_formatter, signal_type)
+            html += self._generate_signal_row_with_ice_chat(signal, ice_chat_formatter, signal_type, data_date)
         
         html += '</tbody></table>'
         return html
@@ -1415,7 +1559,7 @@ tr.uet-fallback-row td{
         
         return f"{prefix} {formatted_value}"
     
-    def _generate_signal_row_with_ice_chat(self, signal: Dict, ice_chat_formatter, signal_type: str) -> str:
+    def _generate_signal_row_with_ice_chat(self, signal: Dict, ice_chat_formatter, signal_type: str, data_date: Optional[datetime] = None) -> str:
         """Generate table row for a signal with embedded ICE Chat rows."""
         entry_date = signal.get('entry_date', '')
         if pd.notna(entry_date) and entry_date:
@@ -1444,9 +1588,6 @@ tr.uet-fallback-row td{
         stop_str = self._format_price_value(stop, signal_type, 'stop', is_spread)
         target_str = self._format_price_value(target, signal_type, 'target', is_spread)
         
-        # Get alignment icon
-        alignment_icon = self._get_alignment_icon(alignment)
-        
         # Get strategy type name from row_data or infer from signal context
         strategy_name = row_data.get('strategy_name', '')
         if strategy_name == 'trend_following':
@@ -1460,6 +1601,52 @@ tr.uet-fallback-row td{
         else:
             # Fallback: try to infer from signal characteristics
             strategy_type = "Unknown"
+        
+        # Get AI alignment if enabled
+        ai_align_label = ""
+        ai_align_confidence = ""
+        ai_response = None  # Store full response for summary row
+        if self.ai_align_enabled:
+            try:
+                # Build trade payload
+                trade_payload = build_trade_payload(signal, ice_chat_formatter, data_date)
+                
+                # Build trade signature for cache
+                trade_signature = {
+                    "week_date": trade_payload.get("week_date", date_str),
+                    "structure_type": trade_payload.get("structure_type", "outright"),
+                    "symbol": signal.get("symbol", ""),
+                    "signal_direction": trade_payload.get("signal_direction", signal_type.title()),
+                    "strategy_type": strategy_type
+                }
+                
+                # Get AI alignment (with caching)
+                cache_date = date.today()
+                if data_date:
+                    if isinstance(data_date, datetime):
+                        cache_date = data_date.date()
+                    elif isinstance(data_date, date):
+                        cache_date = data_date
+                
+                ai_response = get_or_fetch_ai_alignment(
+                    trade_signature,
+                    trade_payload,
+                    cache_date=cache_date,
+                    multi_pass=self.ai_align_config.get('multi_pass', True),
+                    num_passes=self.ai_align_config.get('passes', 3),
+                    model=self.ai_align_config.get('openai_model', 'gpt-4'),
+                    temperature=self.ai_align_config.get('openai_temperature', 0.3),
+                    max_tokens=self.ai_align_config.get('openai_max_tokens', 1000)
+                )
+                
+                ai_align_label = ai_response.get("alignment_label", "AI Error")
+                ai_align_confidence = ai_response.get("confidence", 0)
+                
+            except Exception as e:
+                logger.error(f"Error getting AI alignment for signal {signal.get('symbol', '')}: {e}", exc_info=True)
+                ai_align_label = "AI Error"
+                ai_align_confidence = 0
+                ai_response = None
         
         # Format symbol with badge if fallback
         symbol_display = _html.escape(str(signal.get("symbol", "")))
@@ -1484,6 +1671,9 @@ tr.uet-fallback-row td{
         # Initialize HTML string
         html = ''
         
+        # Calculate colspan for detail rows (base 10, add 2 if AI enabled)
+        colspan = 12 if self.ai_align_enabled else 10
+        
         html += f'<tr{row_class}>'
         html += f'<td><strong>{_html.escape(str(signal.get("symbol", "")))}</strong></td>'  # ICE Symbol (bold)
         html += f'<td>{strategy_type}</td>'
@@ -1493,19 +1683,62 @@ tr.uet-fallback-row td{
         html += f'<td>{target_str}</td>'
         html += f'<td class="uet-num">{pos_pct:.1f}%</td>'
         html += f'<td class="uet-num">{score_display}</td>'
-        html += f'<td class="uet-center"><span class="uet-alignment-icon">{alignment_icon}</span></td>'
+        if self.ai_align_enabled:
+            # Add visual status indicator based on alignment (not just API success)
+            if ai_align_label and ai_align_label != "AI Error" and ai_response and "error" not in ai_response:
+                # Show icon based on alignment label
+                if ai_align_label in ["Strongly Agree", "Agree"]:
+                    status_icon = '<span style="color: #10b981; font-weight: bold;">✓</span> '  # Green check for agree
+                elif ai_align_label == "Neutral":
+                    status_icon = '<span style="color: #f59e0b; font-weight: bold;">⚠</span> '  # Yellow warning for neutral
+                elif ai_align_label in ["Disagree", "Strongly Disagree"]:
+                    status_icon = '<span style="color: #dc2626; font-weight: bold;">✗</span> '  # Red X for disagree
+                else:
+                    status_icon = '<span style="color: #6b7280; font-weight: bold;">?</span> '  # Gray question for unknown
+            else:
+                status_icon = '<span style="color: #dc2626; font-weight: bold;">✗</span> '  # Red X for error
+            html += f'<td class="uet-center">{status_icon}{_html.escape(str(ai_align_label))}</td>'
+            html += f'<td class="uet-num">{ai_align_confidence}</td>'
         html += f'<td class="uet-center">{prior_week_display}</td>'
         html += f'<td>{date_str}</td>'
         html += '</tr>'
         
-        # Add score details row (colspan = 11 after removing Symbol column) - light blue background
+        # Add score details row - light blue background
         score_breakdown = ice_chat_formatter.format_score_breakdown(signal)
         risk_details = ice_chat_formatter.format_risk_details(signal)
-        html += f'<tr class="uet-scoredetails"><td colspan="11"><div class="icechat-line">Score details: {score_breakdown} | {risk_details}</div></td></tr>'
+        html += f'<tr class="uet-scoredetails"><td colspan="{colspan}"><div class="icechat-line">Score details: {score_breakdown} | {risk_details}</div></td></tr>'
         
-        # Add ICE Chat row (already includes "ICE Chat:" prefix) (colspan = 11 after removing Symbol column) - light yellow background
+        # Add ICE Chat row - light yellow background
         ice_chat_msg = ice_chat_formatter.format_ice_chat_message(signal)
-        html += f'<tr class="uet-icechat"><td colspan="11"><div class="icechat-line">{_html.escape(ice_chat_msg)}</div></td></tr>'
+        html += f'<tr class="uet-icechat"><td colspan="{colspan}"><div class="icechat-line">{_html.escape(ice_chat_msg)}</div></td></tr>'
+        
+        # Add AI Analysis summary row - light green background (only if AI succeeded)
+        if self.ai_align_enabled and ai_response and ai_align_label != "AI Error" and "error" not in ai_response:
+            technical_view = ai_response.get("technical_view", "")
+            fundamental_view = ai_response.get("fundamental_view", "")
+            overall_comment = ai_response.get("overall_comment", "")
+            
+            # Build compact one-line bullet points
+            ai_summary_html = '<div class="icechat-line" style="font-size: 12px; line-height: 1.4;">'
+            bullet_points = []
+            if technical_view:
+                bullet_points.append(f'<strong>• Technical:</strong> {_html.escape(technical_view.strip())}')
+            if fundamental_view:
+                bullet_points.append(f'<strong>• Fundamental:</strong> {_html.escape(fundamental_view.strip())}')
+            if overall_comment:
+                bullet_points.append(f'<strong>• Overall:</strong> {_html.escape(overall_comment.strip())}')
+            
+            # Join with separator (pipe) for compact display
+            ai_summary_html += ' | '.join(bullet_points)
+            ai_summary_html += '</div>'
+            
+            html += f'<tr class="uet-ai-analysis"><td colspan="{colspan}">{ai_summary_html}</td></tr>'
+        elif self.ai_align_enabled and (ai_align_label == "AI Error" or not ai_response or "error" in (ai_response or {})):
+            # Show error message if AI failed
+            error_msg = "AI Analysis unavailable"
+            if ai_response and "error" in ai_response:
+                error_msg += f": {ai_response.get('error', 'Unknown error')}"
+            html += f'<tr class="uet-ai-analysis"><td colspan="{colspan}"><div class="icechat-line" style="color: #dc2626;"><em>{error_msg}</em></div></td></tr>'
         
         return html
     
@@ -1801,8 +2034,11 @@ tr.uet-fallback-row td{
         </div>
 """
         
-        # Collect high-conviction signals (≥75 points)
-        min_points = self.config.get('min_points_threshold', 75)
+        # Collect high-conviction signals (from config - no hardcoded default)
+        if 'min_points_threshold' not in self.config:
+            logger.warning("Config missing 'min_points_threshold' - cannot filter signals")
+            return []
+        min_points = self.config['min_points_threshold']
         
         if enhanced_trend_signals is None:
             enhanced_trend_signals = {'buy_signals': [], 'sell_signals': []}
@@ -1887,8 +2123,11 @@ tr.uet-fallback-row td{
         if data_date is None:
             data_date = datetime.now()
         
-        # Collect high-conviction signals (≥75 points)
-        min_points = self.config.get('min_points_threshold', 75)
+        # Collect high-conviction signals (from config - no hardcoded default)
+        if 'min_points_threshold' not in self.config:
+            logger.warning("Config missing 'min_points_threshold' - cannot filter signals")
+            return []
+        min_points = self.config['min_points_threshold']
         
         # Order: Mean Reversion first, then others (matching user's preferred format)
         strategy_signals = {}
